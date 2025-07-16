@@ -98,7 +98,7 @@ void processKB_TXT() {
         else if (inchar == 5) {
           keypad.disableInterrupts();
           oledWord("Loading File");
-          allText = readFileToString(SPIFFS, ("/" + editingFile).c_str());
+          allText = readFileToString(SPIFFS, (editingFile).c_str());
           keypad.enableInterrupts();
           CurrentKBState = NORMAL;
           newState = true;
@@ -210,7 +210,7 @@ void processKB_TXT() {
               delay(200);
               //Load new file
               oledWord("Loading File");
-              allText = readFileToString(SPIFFS, ("/" + editingFile).c_str());
+              allText = readFileToString(SPIFFS, (editingFile).c_str());
               keypad.enableInterrupts();
               //Return to TXT
               CurrentTXTState = TXT_;
@@ -226,7 +226,7 @@ void processKB_TXT() {
             //Just load new file
             keypad.disableInterrupts();
             oledWord("Loading File");
-            allText = readFileToString(SPIFFS, ("/" + editingFile).c_str());
+            allText = readFileToString(SPIFFS, (editingFile).c_str());
             keypad.enableInterrupts();
             //Return to TXT
             CurrentTXTState = TXT_;
