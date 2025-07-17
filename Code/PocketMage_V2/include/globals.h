@@ -110,9 +110,9 @@ extern KBState CurrentKBState;
 extern uint8_t partialCounter;
 extern volatile bool forceSlowFullUpdate;
 
-enum AppState { HOME, TXT, FILEWIZ, USB_APP, BT, SETTINGS, TASKS };
+enum AppState { HOME, TXT, FILEWIZ, USB_APP, BT, SETTINGS, TASKS, CALC };
 extern const String appStateNames[];
-extern const unsigned char *appIcons[6];
+extern const unsigned char *appIcons[7];
 extern AppState CurrentAppState;
 
 // <TXT.ino>
@@ -250,6 +250,9 @@ String convertDateFormat(String yyyymmdd);
 void einkHandler_TASKS();
 void processKB_TASKS();
 
+// <CALC.ino>
+void einkHandler_CALC();
+void processKB_CALC();
 // <PocketMage>
 void applicationEinkHandler();
 void processKB();

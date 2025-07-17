@@ -105,6 +105,15 @@ void commandSelect(String command) {
     // OPEN SETTINGS
   }
   /////////////////////////////
+  else if (command == "calc" || command == "calculator" || command == "math" || command == "7") {
+    CurrentAppState = CALC;
+    CurrentKBState  = NORMAL;
+    dynamicScroll = 0;
+    forceSlowFullUpdate = true;
+    newState = true;
+    newLineAdded = false;
+  }
+  /////////////////////////////
   else if (command == "i farted") {
     oledWord("That smells");
     delay(1000);
