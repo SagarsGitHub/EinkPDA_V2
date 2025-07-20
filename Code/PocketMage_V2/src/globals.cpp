@@ -148,3 +148,7 @@ USBMSC msc;
   // <FILEWIZ.ino> 
   FileWizState CurrentFileWizState = WIZ0_;
   String workingFile = "";
+
+  // Rohan's stuff
+    FileWizState VERY_IMPORTANT_THING = WIZ0_;
+  String workingFileYoYo = "";
