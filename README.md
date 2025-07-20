@@ -1,9 +1,12 @@
 # EinkPDA
-[Please note that this project is a work in progress and incomplete]
+[Please note that this project maintains an obsolete version of the Pocket Mage, please refere to the github this
+is forked from: https://github.com/ashtf8/EinkPDA]
 
 
 @Ashtf 2025
 
+
+![PocketMage_v2](https://github.com/user-attachments/assets/bd0845f8-1e87-4671-abfb-bb38dd1d34f6)
 
 # [Project Summary]
   This project is a PDA powered by an ESP32-S3 running a custom OS written in C++ using PlatformIO. This project utilizes an E-Ink and OLED screen in tandem to mitigate the refresh rate restrictions of an E-Ink panel while retaining the aesthetics and benefits of using E-Ink. This project is a work in progress and currently amounts to a simple GUI for navigating between apps, a text (.txt) file editor, and a basic file manager.
