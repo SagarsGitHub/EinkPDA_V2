@@ -1208,18 +1208,7 @@ int countVisibleChars(String input) {
 
 void updateScrollFromTouch() {
   //oledWord("checking for touch!");
-
   uint16_t touched = cap.touched();  // Read touch state
-  uint8_t eZeroLB = cap.readRegister8(0x4);
-  uint8_t eZeroHB = cap.readRegister8(0x5);
-  uint8_t baseline = cap.readRegister8(0x1E);
-
-  int state =  eZeroLB + (eZeroHB << 8);
-  int status = baseline - state;
-  //oledWord(String(state));
-  //delay(10);
-  //oledWord(String(cap.filteredData(0)));
-  //oledWord(String(baseline));
   if (touched){
     //oledWord("touched!");
   }

@@ -8,6 +8,10 @@
 #include <Wire.h>
 #include <Adafruit_TCA8418.h>
 #include <vector>
+#include <queue>
+#include <stack>
+#include <map>
+#include <set>
 #include <algorithm>
 #include <Buzzer.h>
 #include <USB.h>
@@ -22,6 +26,7 @@
 #include "FS.h"
 #include "SPIFFS.h"
 #include <sys/stat.h>
+#include <iostream>
 
 #include "assets.h"
 #include "config.h"
@@ -148,6 +153,20 @@ extern volatile long int prev_dynamicScroll;
 extern int lastTouch;
 extern unsigned long lastTouchTime;
 
+// <CALC.ino>
+enum CALCState { CALC0, CALC1, CALC2, CALC3, CALC4, CALCFONT };
+extern CALCState CurrentCALCState;
+extern int refresh_count;
+extern std::vector<String> allLinesCalc;
+extern String cleanExpression;
+extern String calculatedResult;
+extern int functionErrorCode;
+extern int calcSwitchedSates;
+extern String prevAns;
+extern std::map<String, float> variables;
+extern  std::set<String> operatorsCalc;
+extern  std::set<String> functionsCalc;
+extern char bufferString[20];
 // <TASKS.ino>
 extern std::vector<std::vector<String>> tasks;
 extern uint8_t selectedTask;
@@ -166,6 +185,8 @@ extern HOMEState CurrentHOMEState;
 enum FileWizState { WIZ0_, WIZ1_, WIZ1_YN, WIZ2_R, WIZ2_C, WIZ3_ };
 extern FileWizState CurrentFileWizState;
 extern String workingFile;
+
+
 
 // FUNCTION PROTOTYPES
 // <sysFunc.ino>
@@ -206,6 +227,7 @@ extern String workingFile;
 void oledWord(String word);
 void oledLine(String line, bool doProgressBar = true);
 void oledScroll();
+void oledScrollCalc();
 void infoBar();
 
 // <einkFunc.ino>
@@ -216,9 +238,11 @@ void einkTextPartial(String text, bool noRefresh = false);
 void drawThickLine(int x0, int y0, int x1, int y1, int thickness);
 int  countLines(String input, size_t maxLineLength = 29);
 void einkTextDynamic(bool doFull_, bool noRefresh = false);
+void einkCalcDynamic(bool doFull_, bool noRefresh = false);
 void setTXTFont(const GFXfont *font);
 void setFastFullRefresh(bool setting);
 void drawStatusBar(String input);
+void printAnswer(String resultOutput);
 
 // <FILEWIZ.ino>
 void processKB_FILEWIZ();
@@ -233,6 +257,27 @@ bool splitIntoLines(const char* input, int scroll_);
 int countWords(String str);
 int countVisibleChars(String input);
 void updateScrollFromTouch();
+
+// <CALC.ino>
+void einkHandler_CALC();
+void processKB_CALC();
+void drawCalc();
+void drawCalcMode();
+void calcCRInput();
+void updateScrollFromTouch_Calc();
+void stripFunction(const String& input, String &cleanedInput);
+int calculate(const String& cleanedInput,String &resultOutput);
+void printError(int errorCode);
+std::queue<String> convertToRPN(String expression,int& error);
+String evaluateRPN(std::queue<String> rpnQueue);
+bool isNumberToken(const String& token);
+bool isOperator(const String& token);
+String formatNumber(double value);
+std::vector<String> tokenize(const String& expression);
+bool isVariableToken(const String& token);
+bool isFunctionToken(const String& token);
+bool isOperatorToken(const String& token);
+
 
 // <HOME.ino>
 void einkHandler_HOME();
@@ -250,9 +295,7 @@ String convertDateFormat(String yyyymmdd);
 void einkHandler_TASKS();
 void processKB_TASKS();
 
-// <CALC.ino>
-void einkHandler_CALC();
-void processKB_CALC();
+
 // <PocketMage>
 void applicationEinkHandler();
 void processKB();

@@ -740,7 +740,8 @@ void deepSleep(bool alternateScreenSaver) {
 
     int numScreensavers = sizeof(ScreenSaver_allArray) / sizeof(ScreenSaver_allArray[0]);
     int randomScreenSaver_ = esp_random() % numScreensavers;
-
+    setFastFullRefresh(false);
+    display.fillScreen(GxEPD_WHITE);
     //display.setPartialWindow(0, 0, 320, 60);
     display.setFullWindow();
     display.drawBitmap(0, 0, ScreenSaver_allArray[randomScreenSaver_], 320, 240, GxEPD_BLACK);
@@ -755,6 +756,7 @@ void deepSleep(bool alternateScreenSaver) {
   }
   else {
     // Display alternate screensaver
+    setFastFullRefresh(false);
     refresh();
     delay(100);
   }

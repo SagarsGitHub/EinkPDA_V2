@@ -107,10 +107,11 @@ void commandSelect(String command) {
   /////////////////////////////
   else if (command == "calc" || command == "calculator" || command == "math" || command == "7") {
     CurrentAppState = CALC;
-    CurrentKBState  = NORMAL;
+    CurrentKBState  = FUNC;
     dynamicScroll = 0;
     forceSlowFullUpdate = true;
     newState = true;
+    doFull = true;
     newLineAdded = false;
   }
   /////////////////////////////

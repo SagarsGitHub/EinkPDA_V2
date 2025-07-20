@@ -38,7 +38,7 @@ char keysArraySHFT[4][10] = {
 char keysArrayFN[4][10] = {
   { '1', '2', '3', '4', '5', '6', '7', '8', '9', '0' },
   { '#', '!', '$', ':', ';', '(', ')', '\'', '\"', 12 },
-  { 14, '%', '_', '&', '+', '-', '/', '?', ',', 13 },
+  { 14, '%', '-', '&', '+', '_', '/', '?', ',', 13 },
   { 0, 17, 18, ' ', ' ', ' ', 5, 7, 6, 0 }
 };
 
@@ -148,3 +148,31 @@ USBMSC msc;
   // <FILEWIZ.ino> 
   FileWizState CurrentFileWizState = WIZ0_;
   String workingFile = "";
+
+  // <CALC.ino>
+  CALCState CurrentCALCState = CALC0;
+  int refresh_count = 0;
+  std::vector<String> allLinesCalc;
+  String cleanExpression = "";
+  String calculatedResult = "";
+  int functionErrorCode = 0;
+  int calcSwitchedSates = 0;
+  String prevAns = "";
+  std::map<String, float> variables= {
+        {"a", 0.0},
+        {"b", 0.0},
+        {"c", 0.0},
+        {"x", 0.0},
+        {"y", 0.0},
+        {"z", 0.0},
+        {"n", 0.0},
+        {"f", 0.0},
+        {"r", 0.0},
+  };
+  std::set<String> operatorsCalc = {
+        "+", "-", "'", "/", "%", "=", "!", "\""
+  };
+  std::set<String> functionsCalc = {
+        "sin", "cos", "tan", "asin", "acos", "atan", "log", "log10", "sqrt", "abs", "exp", "round", "min", "max", "pow", "rand"
+  };
+  char bufferString[20];

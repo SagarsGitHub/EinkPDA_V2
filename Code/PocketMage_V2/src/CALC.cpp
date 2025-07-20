@@ -8,8 +8,18 @@
 #include "globals.h"
 
 
+
+// !! Commented for code-review
+//  check RAM
+//  Free Heap: Serial.println(String(ESP.getFreeHeap()));
+//  Total Heap: Serial.println(ESP.getHeapSize());
+//  minimum free heap since start: Serial.println(ESP.getMinFreeHeap());
+//  size of largest contiguous block of memory: Serial.println(ESP.getMaxAllocHeap());
+
+// KB HANDLER
 void processKB_CALC() {
-  
+
+  // POWER SAVING
   if (OLEDPowerSave) {
     u8g2.setPowerSave(0);
     OLEDPowerSave = false;
@@ -17,33 +27,36 @@ void processKB_CALC() {
 
   disableTimeout = false;
  
-
   int currentMillis = millis();
-  //Make sure oled only updates at 60fps
-  
+
+  // MAKE SURE OLED ONLY UPDATES AT 60HZ
   if (currentMillis - KBBounceMillis >= KB_COOLDOWN) {  
     
     char inchar = updateKeypress();
-    switch (CurrentTXTState) {
-      case TXT_:
+    // CHECK WHAT APP STATE
+    switch (CurrentCALCState) {
+      // STANDARD MODE
+      case CALC0:
         // SET MAXIMUMS AND FONT
         setTXTFont(currentFont);
 
-        // UPDATE SCROLLBAR
-        updateScrollFromTouch();
+        // UPDATE SCROLLBAR (calc specific function that could be abstracted to processSB_CALC())
+        updateScrollFromTouch_Calc();
         
         // HANDLE INPUTS
         //No char recieved
         if (inchar == 0);  
         else if (inchar == 12) {
-          CurrentAppState = HOME;
-          currentLine     = "";
-          newState        = true;
-          CurrentKBState  = NORMAL;
+          if (currentLine.length() > 0) {
+            currentLine.remove(currentLine.length() - 1);
+          }
+
         }
-        //TAB Recieved
-        else if (inchar == 9) {                                  
-          currentLine += "    ";
+        //TAB Recieved (This starts the font switcher now)
+        else if (inchar == 9) {    
+          CurrentCALCState = CALCFONT;
+          CurrentKBState = FUNC;
+          newState = true;                              
         }                                      
         //SHIFT Recieved
         else if (inchar == 17) {                                  
@@ -60,75 +73,61 @@ void processKB_CALC() {
           currentLine += " ";
         }
         //CR Recieved
-        else if (inchar == 13) {                          
-          allLines.push_back(currentLine);
-          currentLine = "";
-          newLineAdded = true;
+        else if (inchar == 13) {    
+          calcCRInput();                      
         }
         //ESC / CLEAR Recieved
         else if (inchar == 20) {                                  
-          allLines.clear();
+          allLinesCalc.clear();
           currentLine = "";
           oledWord("Clearing...");
-          doFull = true;
-          newLineAdded = true;
+          drawCalc();
+          einkCalcDynamic(false,false);
+          display.refresh();
           delay(300);
         }
-        // LEFT
+        // LEFT (not implemented currently)
         else if (inchar == 19) {                                  
           
         }
-        // RIGHT
+        // RIGHT (not implemented currently)
         else if (inchar == 21) {                                  
           
         }
         //BKSP Recieved
-        else if (inchar == 8) {                  
+        else if (inchar == 8) {    
           if (currentLine.length() > 0) {
             currentLine.remove(currentLine.length() - 1);
-          }
+          }              
+              
         }
-        //SAVE Recieved
+        //SAVE Recieved (no plan to save calculations)
         else if (inchar == 6) {
-          //File exists, save normally
-          if (editingFile != "" && editingFile != "-") {
-            saveFile();
-            CurrentKBState = NORMAL;
-            newLineAdded = true;
-          }
-          //File does not exist, make a new one
-          else {
-            CurrentTXTState = WIZ3;
-            currentLine = "";
-            CurrentKBState = NORMAL;
-            doFull = true;
-            newState = true;
-          }
         }
-        //LOAD Recieved
+        //LOAD Recieved (no plan to save calculations)
         else if (inchar == 5) {
-          loadFile();
-          CurrentKBState = NORMAL;
-          newLineAdded = true;
         }
-        //FILE Recieved
+        //FILE Recieved 
         else if (inchar == 7) {
-          CurrentTXTState = WIZ0;
-          CurrentKBState = NORMAL;
-          newState = true;
+          allLinesCalc.clear();
+          currentLine = "";
+          oledWord("Clearing...");
+
+          drawCalc();
+          einkCalcDynamic(true);
+          delay(300);
         }
-        // Font Switcher 
+
+        // Font Switcher (regular tab also starts the font switcher)
         else if (inchar == 14) {                                  
-          CurrentTXTState = FONT;
+          CurrentCALCState = CALCFONT;
           CurrentKBState = FUNC;
-          newState = true;
+          newState = true;         
         }
+        // ADD NON-SPECIAL CHARACTERS TO CURRENTLINE
         else {
           currentLine += inchar;
-          if (inchar >= 48 && inchar <= 57) {}  //Only leave FN on if typing numbers
-          else if (CurrentKBState != NORMAL) {
-            CurrentKBState = NORMAL;
-          }
+          // NO LOGIC TO SWITCH FN BACK TO NORMAL FOR EASE OF INPUT
         }
 
         currentMillis = millis();
@@ -138,293 +137,43 @@ void processKB_CALC() {
           // ONLY SHOW OLEDLINE WHEN NOT IN SCROLL MODE
           if (lastTouch == -1) {
             oledLine(currentLine);
-            
             if (prev_dynamicScroll != dynamicScroll) prev_dynamicScroll = dynamicScroll;
           }
-          else oledScroll();
+          else oledScrollCalc();
         }
 
-        if (currentLine.length() > 0) {
-          int16_t x1, y1;
-          uint16_t charWidth, charHeight;
-          display.getTextBounds(currentLine, 0, 0, &x1, &y1, &charWidth, &charHeight);
-
-          if (charWidth >= display.width()-5) {
-            // If currentLine ends with a space, just start a new line
-            if (currentLine.endsWith(" ")) {
-              allLines.push_back(currentLine);
-              currentLine = "";
-            }
-            // If currentLine ends with a letter, we are in the middle of a word
-            else {
-              int lastSpace = currentLine.lastIndexOf(' ');
-              String partialWord;
-
-              if (lastSpace != -1) {
-                partialWord = currentLine.substring(lastSpace + 1);
-                currentLine = currentLine.substring(0, lastSpace);  // Strip partial word
-                currentLine = partialWord;  // Start new line with the partial word
-              } 
-              // No spaces found, whole line is a single word
-              else {
-                allLines.push_back(currentLine);
-                currentLine = "";
-              }
-            }
-            newLineAdded = true;
-          }
-        }
+        
 
         break;
-      case WIZ0:
+      // PROGRAMMING MODE (not implemented)
+      case CALC1:
+        break;
+      // SCIENTIFIC MODE (not implemented)
+      case CALC2:
+        break;
+      // CONVERSIONS MODE (not implemented)
+      case CALC3:
+        break;
+      // HELP MODE (no need inputs)
+      case CALC4:
+
+        break;
+      // FONT SWITCHER
+      case CALCFONT:
         //No char recieved
         if (inchar == 0);
         //BKSP Recieved
-        else if (inchar == 127 || inchar == 8) {                  
-          CurrentTXTState = TXT_;
+        else if (inchar == 12 || inchar == 8) {                  
+          CurrentCALCState = CALC0;
           CurrentKBState = NORMAL;
-          newLineAdded = true;
-          currentWord = "";
+          newLineAdded = false;
+          editingFile = "";
           currentLine = "";
-          display.fillScreen(GxEPD_WHITE);
-        }
-        else if (inchar >= '0' && inchar <= '9'){
-          int fileIndex = (inchar == '0') ? 10 : (inchar - '0');
-          //Edit a new file
-          if (filesList[fileIndex - 1] != editingFile) {
-            //Selected file does not exist, create a new one
-            if (filesList[fileIndex - 1] == "-") {
-              CurrentTXTState = WIZ3;
-              einkRefresh = FULL_REFRESH_AFTER + 1;
-              newState = true;
-              display.fillScreen(GxEPD_WHITE);
-            }
-            //Selected file exists, prompt to save current file
-            else {      
-              prevEditingFile = editingFile;
-              editingFile = filesList[fileIndex - 1];      
-              CurrentTXTState = WIZ1;
-              einkRefresh = FULL_REFRESH_AFTER + 1;
-              newState = true;
-              display.fillScreen(GxEPD_WHITE);
-            }
-          }
-          //Selected file is current file, return to editor
-          else {
-            CurrentKBState = NORMAL;
-            CurrentTXTState = TXT_;
-            newLineAdded = true;
-            currentWord = "";
-            currentLine = "";
-            display.fillScreen(GxEPD_WHITE);
-          }
-
-        }
-
-        currentMillis = millis();
-        //Make sure oled only updates at 60fps
-        if (currentMillis - OLEDFPSMillis >= 16) {
-          OLEDFPSMillis = currentMillis;
-          oledLine(currentWord, false);
-        }
-        break;
-      case WIZ1:
-        //No char recieved
-        if (inchar == 0);
-        //BKSP Recieved
-        else if (inchar == 127 || inchar == 8) {                  
-          CurrentTXTState = WIZ0;
-          CurrentKBState = FUNC;
-          einkRefresh = FULL_REFRESH_AFTER + 1;
-          newState = true;
-          display.fillScreen(GxEPD_WHITE);
-        }
-        else if (inchar >= '0' && inchar <= '9'){
-          int numSelect = (inchar == '0') ? 10 : (inchar - '0');
-          //YES (save current file)
-          if (numSelect == 1) {
-            Serial.println("YES (save current file)");
-            //File to be saved does not exist
-            if (prevEditingFile == "" || prevEditingFile == "-") {
-              CurrentTXTState = WIZ2;
-              currentWord = "";
-              CurrentKBState = NORMAL;
-              einkRefresh = FULL_REFRESH_AFTER + 1;
-              newState = true;
-              display.fillScreen(GxEPD_WHITE);
-            }
-            //File to be saved exists
-            else {
-              //Save current file
-              saveFile();
-
-              delay(200);
-              //Load new file
-              loadFile();
-              //Return to TXT
-              CurrentTXTState = TXT_;
-              CurrentKBState = NORMAL;
-              newLineAdded = true;
-              currentWord = "";
-              currentLine = "";
-              display.fillScreen(GxEPD_WHITE);
-            }
-          }
-          //NO  (don't save current file)
-          else if (numSelect == 2) {
-            Serial.println("NO  (don't save current file)");
-            //Just load new file
-            loadFile();
-            //Return to TXT
-            CurrentTXTState = TXT_;
-            CurrentKBState = NORMAL;
-            newLineAdded = true;
-            currentWord = "";
-            currentLine = "";
-            display.fillScreen(GxEPD_WHITE);
-          }
-        }
-
-        currentMillis = millis();
-        //Make sure oled only updates at 60fps
-        if (currentMillis - OLEDFPSMillis >= 16) {
-          OLEDFPSMillis = currentMillis;
-          oledLine(currentWord, false);
-        }
-        break;
-
-      case WIZ2:
-        //No char recieved
-        if (inchar == 0);                                         
-        //SHIFT Recieved
-        else if (inchar == 17) {                                  
-          if (CurrentKBState == SHIFT) CurrentKBState = NORMAL;
-          else CurrentKBState = SHIFT;
-          newState = true;
-        }
-        //FN Recieved
-        else if (inchar == 18) {                                  
-          if (CurrentKBState == FUNC) CurrentKBState = NORMAL;
-          else CurrentKBState = FUNC;
-          newState = true;
-        }
-        //Space Recieved
-        else if (inchar == 32) {}
-        //ESC / CLEAR Recieved
-        else if (inchar == 20) {                                  
-          currentWord = "";
-        }
-        //BKSP Recieved
-        else if (inchar == 8) {                  
-          if (currentWord.length() > 0) {
-            currentWord.remove(currentWord.length() - 1);
-          }
-        }
-        //ENTER Recieved
-        else if (inchar == 13) {                          
-          prevEditingFile = "/" + currentWord + ".txt";
-
-          //Save the file
-          saveFile();
-
-          delay(200);
-          //Load new file
-          loadFile();
-
-          keypad.enableInterrupts();
-
-          //Return to TXT_
-          CurrentTXTState = TXT_;
-          CurrentKBState = NORMAL;
-          newLineAdded = true;
-          currentWord = "";
-          currentLine = "";
-        }
-        //All other chars
-        else {
-          //Only allow char to be added if it's an allowed char
-          if (isalnum(inchar) || inchar == '_' || inchar == '-' || inchar == '.') currentWord += inchar;
-          if (inchar >= 48 && inchar <= 57) {}  //Only leave FN on if typing numbers
-          else if (CurrentKBState != NORMAL){
-            CurrentKBState = NORMAL;
-          }
-        }
-
-        currentMillis = millis();
-        //Make sure oled only updates at 60fps
-        if (currentMillis - OLEDFPSMillis >= 16) {
-          OLEDFPSMillis = currentMillis;
-          oledLine(currentWord, false);
-        }
-        break;
-      case WIZ3:
-        //No char recieved
-        if (inchar == 0);                                         
-        //SHIFT Recieved
-        else if (inchar == 17) {                                  
-          if (CurrentKBState == SHIFT) CurrentKBState = NORMAL;
-          else CurrentKBState = SHIFT;
-        }
-        //FN Recieved
-        else if (inchar == 18) {                                  
-          if (CurrentKBState == FUNC) CurrentKBState = NORMAL;
-          else CurrentKBState = FUNC;
-        }
-        //Space Recieved
-        else if (inchar == 32) {}
-        //ESC / CLEAR Recieved
-        else if (inchar == 20) {                                  
-          currentWord = "";
-        }
-        //BKSP Recieved
-        else if (inchar == 8) {                  
-          if (currentWord.length() > 0) {
-            currentWord.remove(currentWord.length() - 1);
-          }
-        }
-        //ENTER Recieved
-        else if (inchar == 13) {                          
-          editingFile = "/" + currentWord + ".txt";
-
-          //Save the file
-          saveFile();
-          //Ask to save prev file
-          
-          //Return to TXT_
-          CurrentTXTState = TXT_;
-          CurrentKBState = NORMAL;
-          newLineAdded = true;
-          currentWord = "";
-          currentLine = "";
-        }
-        //All other chars
-        else {
-          //Only allow char to be added if it's an allowed char
-          if (isalnum(inchar) || inchar == '_' || inchar == '-' || inchar == '.') currentWord += inchar;
-          if (inchar >= 48 && inchar <= 57) {}  //Only leave FN on if typing numbers
-          else if (CurrentKBState != NORMAL){
-            CurrentKBState = NORMAL;
-          }
-        }
-
-        currentMillis = millis();
-        //Make sure oled only updates at 60fps
-        if (currentMillis - OLEDFPSMillis >= 16) {
-          OLEDFPSMillis = currentMillis;
-          oledLine(currentWord, false);
-        }
-        break;
-      case FONT:
-        //No char recieved
-        if (inchar == 0);
-        //BKSP Recieved
-        else if (inchar == 127 || inchar == 8) {                  
-          CurrentTXTState = TXT_;
-          CurrentKBState = NORMAL;
-          newLineAdded = true;
-          currentWord = "";
-          currentLine = "";
-          display.fillScreen(GxEPD_WHITE);
+          // refresh screen (new function?)
+          //display.fillScreen(GxEPD_WHITE);
+          //refresh();
+          drawCalc();
+          einkCalcDynamic(true);
         }
         else if (inchar >= '0' && inchar <= '9') {
           int fontIndex = (inchar == '0') ? 10 : (inchar - '0');
@@ -461,12 +210,21 @@ void processKB_CALC() {
           String fullTextStr = vectorToString();
           stringToVector(fullTextStr);
 
-          CurrentTXTState = TXT_;
+          CurrentCALCState = CALC0;
           CurrentKBState = NORMAL;
           newLineAdded = true;
           currentWord = "";
           currentLine = "";
-          display.fillScreen(GxEPD_WHITE);
+          //STORE ALLLINES IN TEMP BEFORE REFRESHING SCREEN TO AVOID DRAWING MULTIPLE FONTS
+          std::vector<String> tempLines = allLinesCalc;
+          allLinesCalc.clear();
+
+          // REFRESH SCREEN
+          refresh();
+          drawCalc();
+          allLinesCalc = tempLines;
+          einkCalcDynamic(true);
+          
         }
 
         currentMillis = millis();
@@ -482,268 +240,224 @@ void processKB_CALC() {
   }
 }
 
+// Eink handler
 void einkHandler_CALC() {
+  
   if (newLineAdded || newState) {
-    switch (CurrentTXTState) {
-      case TXT_:
+    switch (CurrentCALCState) {
+      case CALC0:
+        
+        //standard mode
         if (newState && doFull) {
-          display.fillScreen(GxEPD_WHITE);
-          refresh();
-        }
-        if (newLineAdded && !newState) {
-          einkTextDynamic(true);
-          refresh();
-        }
-        else if (newState && !newLineAdded) {
-          //display.setPartialWindow(0,display.height()-20,display.width(),20);
-          display.fillScreen(GxEPD_WHITE);
-          drawStatusBar("L:" + String(allLines.size()) + "," + editingFile);
-          refresh();
-        }
-        
-        //einkTextDynamic(true);
-
-        break;
-      case WIZ0:
-        display.setFullWindow();
-        einkTextDynamic(true, true);      
-        display.setFont(&FreeMonoBold9pt7b);
-        
-        display.fillRect(0,display.height()-26,display.width(),26,GxEPD_WHITE);
-        display.drawRect(0,display.height()-20,display.width(),20,GxEPD_BLACK);
-        display.setCursor(4, display.height()-6);
-        display.print("W:" + String(countWords(allText)) + " C:" + String(countVisibleChars(allText)) + " L:" + String(countLines(allText)));
-        display.drawBitmap(display.width()-30,display.height()-20, KBStatusallArray[6], 30, 20, GxEPD_BLACK);
-
-        display.fillRect(60,0,200,218,GxEPD_WHITE);
-        display.drawBitmap(60,0,fileWizLiteallArray[0],200,218, GxEPD_BLACK);
-
-        keypad.disableInterrupts();
-        listDir(SPIFFS, "/");
-        keypad.enableInterrupts();
-
-        for (int i = 0; i < MAX_FILES; i++) {
-          display.setCursor(88, 54+(17*i));
-          display.print(filesList[i]);
-        }
-
-        refresh();
-        CurrentKBState = FUNC;
-        break;
-      case WIZ1:
-        display.setFont(&FreeMonoBold9pt7b);
-        
-        display.fillRect(0,display.height()-26,display.width(),26,GxEPD_WHITE);
-        display.drawRect(0,display.height()-20,display.width(),20,GxEPD_BLACK);
-        display.setCursor(4, display.height()-6);
-        display.print("W:" + String(countWords(allText)) + " C:" + String(countVisibleChars(allText)) + " L:" + String(countLines(allText)));
-        display.drawBitmap(display.width()-30,display.height()-20, KBStatusallArray[6], 30, 20, GxEPD_BLACK);
-
-        display.fillRect(60,0,200,218,GxEPD_WHITE);
-        display.drawBitmap(60,0,fileWizLiteallArray[1],200,218, GxEPD_BLACK);
-
-        refresh();
-        CurrentKBState = FUNC;
-        break;
-      case WIZ2:
-        display.setFont(&FreeMonoBold9pt7b);
-        
-        display.fillRect(0,display.height()-26,display.width(),26,GxEPD_WHITE);
-        display.drawRect(0,display.height()-20,display.width(),20,GxEPD_BLACK);
-        display.setCursor(4, display.height()-6);
-        display.print("W:" + String(countWords(allText)) + " C:" + String(countVisibleChars(allText)) + " L:" + String(countLines(allText)));
-        display.drawBitmap(display.width()-30,display.height()-20, KBStatusallArray[6], 30, 20, GxEPD_BLACK);
-
-        display.fillRect(60,0,200,218,GxEPD_WHITE);
-        display.drawBitmap(60,0,fileWizLiteallArray[2],200,218, GxEPD_BLACK);
-
-        refresh();
-        CurrentKBState = NORMAL;
-        break;
-      case WIZ3:
-        display.setFullWindow();
-        einkTextDynamic(true, true);      
-        display.setFont(&FreeMonoBold9pt7b);
-        
-        display.fillRect(0,display.height()-26,display.width(),26,GxEPD_WHITE);
-        display.drawRect(0,display.height()-20,display.width(),20,GxEPD_BLACK);
-        display.setCursor(4, display.height()-6);
-        display.print("W:" + String(countWords(allText)) + " C:" + String(countVisibleChars(allText)) + " L:" + String(countLines(allText)));
-        display.drawBitmap(display.width()-30,display.height()-20, KBStatusallArray[6], 30, 20, GxEPD_BLACK);
-
-        display.fillRect(60,0,200,218,GxEPD_WHITE);
-        display.drawBitmap(60,0,fileWizLiteallArray[3],200,218, GxEPD_BLACK);
-
-        refresh();
-        CurrentKBState = NORMAL;
-        break;
-      case FONT:
-        display.setFullWindow();
-        einkTextDynamic(true, true);      
-        
-        drawStatusBar("Select a Font (0-9)");
-
-        display.fillRect(60,0,200,218,GxEPD_WHITE);
-        display.drawBitmap(60,0,fontfont0,200,218, GxEPD_BLACK);
-
-        keypad.disableInterrupts();
-        listDir(SPIFFS, "/");
-        keypad.enableInterrupts();
-
-        for (int i = 0; i < 7; i++) {
-          display.setCursor(88, 54+(17*i));
-          switch (i) {
-            case 0:
-              display.setFont(&FreeMonoBold9pt7b);
-              break;
-            case 1:
-              display.setFont(&FreeSans9pt7b);
-              break;
-            case 2:
-              display.setFont(&FreeSerif9pt7b);
-              break;
-            case 3:
-              display.setFont(&FreeSerifBold9pt7b);
-              break;
-            case 4:
-              display.setFont(&FreeMono12pt7b);
-              break;
-            case 5:
-              display.setFont(&FreeSans12pt7b);
-              break;
-            case 6:
-              display.setFont(&FreeSerif12pt7b);
-              break;
+          //display.fillScreen(GxEPD_WHITE);
+          
+          drawCalc();
+          einkCalcDynamic(true);
+          //refresh();
+          doFull = false;
+        } else if (newLineAdded && !newState) {
+          
+          refresh_count++;
+          if (refresh_count > 10){
+            drawCalc(); 
+            einkCalcDynamic(true);
+            setFastFullRefresh(false);
+            refresh_count = 0;
+          } else {
+            einkCalcDynamic(true);
           }
-          display.print("Font Number " + String(i+1));
-        }
+          setFastFullRefresh(true);
+        } else if (newState && !newLineAdded) {
+          //display.setPartialWindow(0,display.height()-20,display.width(),20);
+          //display.fillScreen(GxEPD_WHITE);
+          
+          drawCalc();
 
-        refresh();
-        CurrentKBState = FUNC;
+        }
+        
+        //einkCalcDynamic(true);
+
         break;
-    
-    }
+      case CALC1:
+        //programming mode
+        break;
+      case CALC2:
+        //scientific mode
+        break;
+      case CALC3:
+        //conversions 
+        break;
+      case CALC4:
+        //help mode
+        
+        currentFont = &FreeMonoBold9pt7b;
+        setTXTFont(currentFont);
+        // print out everything needed to understand basics of program, might be memory inefficient
+        allLinesCalc.clear();
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("This is the help screen");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("press enter to exit help mode");
+        allLinesCalc.push_back("NOTES:");
+        allLinesCalc.push_back("  /5 -> EXIT APP");
+        allLinesCalc.push_back("  include \"0.\" in floats");
+        allLinesCalc.push_back("   \"a=b\" invalid");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("    vvv scroll down vvv");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("commands:");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("    '/' + <command> ");
+        allLinesCalc.push_back(" 0 : standard");
+        allLinesCalc.push_back("  ");
+        allLinesCalc.push_back(" 1 : programming");
+        allLinesCalc.push_back("    (not implemented) ");
+        allLinesCalc.push_back(" 2 : scientific ");
+        allLinesCalc.push_back("    (not implemented) ");
+        allLinesCalc.push_back(" 3 : conversions ");
+        allLinesCalc.push_back("    (not implemented) ");
+        allLinesCalc.push_back(" 4 : help");
+        allLinesCalc.push_back("  ");
+        allLinesCalc.push_back(" 5 : export to txt");
+        allLinesCalc.push_back("  ");
+        allLinesCalc.push_back(" 6 : EXIT");
+        allLinesCalc.push_back("  ");
+        allLinesCalc.push_back("keyboard changes:");
+        allLinesCalc.push_back("  default kb state:FUNC");
+        allLinesCalc.push_back("  tab && FN(tab) == font");
+        allLinesCalc.push_back("  bksp == fn(bskp)");
+        allLinesCalc.push_back("  clear == only oled ");
+        allLinesCalc.push_back("operators:");
+        allLinesCalc.push_back("  ");
+        allLinesCalc.push_back(" - (unary included)");
+        allLinesCalc.push_back(" +");
+        allLinesCalc.push_back(" * (type: ' or a(b))");
+        allLinesCalc.push_back(" /");
+        allLinesCalc.push_back(" %");
+        allLinesCalc.push_back(" !");
+        allLinesCalc.push_back(" ^ (type: \")");
+        allLinesCalc.push_back(" = (type: &)");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("functions: ");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back(" sin(a)     asin(a)");
+        allLinesCalc.push_back(" cos(a)     acos(a)");
+        allLinesCalc.push_back(" tan(a)     atan(a)");
+        allLinesCalc.push_back(" sqrt(a)");
+        allLinesCalc.push_back(" exp(a)     log(a)");
+        allLinesCalc.push_back(" pow(a,b)   log10(a");
+        allLinesCalc.push_back(" floor(a)   ceil(a)");
+        allLinesCalc.push_back(" min(a)     max(a)");
+        allLinesCalc.push_back(" round(a)");
+        allLinesCalc.push_back(" abs(a)");
+        allLinesCalc.push_back(" rand(a,b)");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("variables: ");
+        allLinesCalc.push_back("");
+        allLinesCalc.push_back("[a,b,c,x,y,z,n,f,r] ");
+        allLinesCalc.push_back("    ^^^ scroll up ^^^");
+        dynamicScroll = (allLinesCalc.size() - 11);
+        drawCalc(); 
+        
+        einkCalcDynamic(true);
+        calcSwitchedSates = true;
+        setFastFullRefresh(false);
+
+        break;
+      // if implemented in v3, adjust file saving
+      case CALCFONT:
+        
+
+        display.firstPage();
+        do {
+          // false avoids full refresh
+          einkCalcDynamic(true, false);      
+          display.setPartialWindow(60, 0, 200, 218);
+          drawStatusBar("Select a Font (0-9)");
+
+          display.fillRect(60, 0, 200, 218, GxEPD_WHITE);
+          display.drawBitmap(60, 0, fontfont0, 200, 218, GxEPD_BLACK);
+
+          for (int i = 0; i < 7; i++) {
+            display.setCursor(88, 54 + (17 * i));
+            switch (i) {
+              case 0: display.setFont(&FreeMonoBold9pt7b); break;
+              case 1: display.setFont(&FreeSans9pt7b); break;
+              case 2: display.setFont(&FreeSerif9pt7b); break;
+              case 3: display.setFont(&FreeSerifBold9pt7b); break;
+              case 4: display.setFont(&FreeMono12pt7b); break;
+              case 5: display.setFont(&FreeSans12pt7b); break;
+              case 6: display.setFont(&FreeSerif12pt7b); break;
+            }
+            display.print("Font Number " + String(i + 1));
+          }
+        } while (display.nextPage());
+
+        CurrentKBState = FUNC;
+        newState = false;
+        newLineAdded = false;
+        break;
+      }
     newState = false;
     newLineAdded = false;
+    if ( CurrentCALCState == CALC4) {
+      calcSwitchedSates = 1;
+      CurrentCALCState = CALC0;
+    }
   }
 }
-/*
-bool splitIntoLines(const char* input, int scroll_) {
-  size_t    maxLineLength = 29;                 //Chars per line
-  size_t    maxLines      = 100;               //Total lines
-  size_t    inputLength   = strlen(input);
-  uint8_t   charCounter   = 0;
-  uint16_t  lineCounter   = 0;
 
-  //Declare a large local array
-  String fullLines[maxLines];
-
-  //Clear fullLines
-  for (int i = 0; i < maxLines; i++) {
-    fullLines[i] = "";
-  }
-
-  //Increment through input one char at a time
-  for (size_t c = 0; c < inputLength && lineCounter < maxLines; c++) { 
-    if (input[c] == '\n') {
-      charCounter = 0;
-      lineCounter++;
-      continue;
-    }
-    else if (charCounter > (maxLineLength-1)) {
-      charCounter = 0;
-      lineCounter++;
-    }
-    fullLines[lineCounter] += input[c];
-    charCounter++;
-  }
-
-  for (int i = 0; i < 13; i++) {
-    outLines[i] = "";
-  }
-
-  //for (int i = 0; i < maxLines; i++) {
-  //  printf(("fullLines " + String(i) + ": " + fullLines[i] + "\n").c_str());
-  //}
-
-  int lineCounter_ = 0;
-  if (lineCounter < 13) {
-    scroll_ = 0;
-    lineCounter_ = 13;
-  }
-  else lineCounter_ = lineCounter;
-  
-  uint8_t j = 0;
-  for (uint16_t i = (lineCounter_-13-scroll_); j < 13; i++, j++) { //i: fullLines index, j:outLines index
-    if (i >= 0 && i < maxLines) {
-      outLines[j] = fullLines[i];  // Copy lines from fullLines to outLines
-      //printf(("Line " + String(j) + ": " + outLines[j] + "\n").c_str());
-    }
-  }
-
-  static String prevTopLine = "";  // Static to keep track of the previous top line
-  String topLine = outLines[0];
-
-  if (topLine != prevTopLine && lineCounter > 12) {
-    // If the top line has changed, it's a new line
-    einkRefresh = FULL_REFRESH_AFTER + 1;
-    newState = true;
-    prevTopLine = topLine;  // Update the previous top line
-    return true;
-  }
-  else return false;
+// draws the calculator window
+void drawCalc(){
+  // SET FONT
+  setTXTFont(currentFont);
+  // DRAW APP
+  display.setFullWindow();
+  display.firstPage();
+  do {
+    drawStatusBar("\"/4\" -> info | \"/6\" -> EXIT");
+    display.drawBitmap(0, 0, calcAllArray[0], 320, 218, GxEPD_BLACK);
+    display.setCursor(25, 20);
+    drawCalcMode();
+    
+  } while (display.nextPage());
 }
 
-int countWords(String str) {
-  int count = 0;
-  bool inWord = false;
-
-  // Loop through each character in the String
-  for (int i = 0; i < str.length(); i++) {
-    char c = str.charAt(i);
-
-    // If the character is a space, mark the end of a word
-    if (c == ' ') {
-      if (inWord) {
-        count++;  // We've encountered the end of a word
-        inWord = false;
-      }
-    } 
-    else {
-      // If the character is not a space, we're in a word
-      inWord = true;
-    }
+// draws current calculator mode in the top status bard
+void drawCalcMode(){
+  switch (CurrentCALCState) {
+    case CALC0:
+      
+      //standard mode
+      display.print("Calc: Standard Mode");
+      break;
+    case CALC1:
+      //programming mode
+      display.print("Calc: Programming Mode");
+      break;
+    case CALC2:
+      //scientific mode
+      display.print("Calc: Scientific Mode");
+      break;
+    case CALC3:
+      //conversions
+      display.print("Calc: Conversions Mode");
+      break;
+    case CALC4:
+      //help mode
+      display.print("Calc: Help Mode");
+      break;  
   }
-
-  // If the last character is not a space, we have one more word
-  if (inWord) {
-      count++;
-  }
-
-  return count;
 }
 
-int countVisibleChars(String input) {
-  int count = 0;
-
-  for (size_t i = 0; i < input.length(); i++) {
-    char c = input[i];
-    // Check if the character is a visible character or space
-    if (c >= 32 && c <= 126) { // ASCII range for printable characters and space
-      count++;
-    }
-  }
-
-  return count;
-}
-
-void updateScrollFromTouch() {
-
-
+// could be abstracted to a processSB_Calc function with an interface set up for every app
+void updateScrollFromTouch_Calc() {
   //oledWord("checking for touch!");
 
   uint16_t touched = cap.touched();  // Read touch state
-  
   if (touched){
     //oledWord("touched!");
   }
@@ -767,26 +481,686 @@ void updateScrollFromTouch() {
     if (lastTouch != -1) {  // Compare with previous touch
       int touchDelta = abs(newTouch - lastTouch);
       if (touchDelta < 2) {  // Ignore large jumps (adjust threshold if needed)
-        int maxScroll = max(0, (int)allLines.size() - maxLines);  // Ensure a valid scroll range
+        int maxScroll = max(0, (int)allLinesCalc.size() - maxLines + 1);  // Ensure a valid scroll range
         if (newTouch > lastTouch) {
           dynamicScroll = min((int)(dynamicScroll + 1), maxScroll);
 
         } else if (newTouch < lastTouch) {
           dynamicScroll = max((int)(dynamicScroll - 1), 0);
-
         }
       }
     }
     lastTouch = newTouch;  // Always update lastTouch
     lastTouchTime = currentTime;  // Reset timeout timer
   } 
-  else if (lastTouch != -1 && (currentTime - lastTouchTime > TOUCH_TIMEOUT_MS)) {
-    // RESET LASTTOUCH AFTER TIMEOUT
-    lastTouch = -1;
-    // ONLY UPDATE IF SCROLL HAS CHANGED
-    if (prev_dynamicScroll != dynamicScroll) newLineAdded = true;
+  else if (lastTouch != -1) {
+    if (currentTime - lastTouchTime > TOUCH_TIMEOUT_MS) {
+        lastTouch = -1;
+        if (prev_dynamicScroll != dynamicScroll) {
+            newLineAdded = true;
+            prev_dynamicScroll = dynamicScroll; // Update comparison value
+        }
+    }
   }
-  //Serial.println("update scroll has finished!");
+    //Serial.println("update scroll has finished!");
+}
 
-}*/
+// class to clean up CR input in switch statement
+void calcCRInput(){
+  // reset eink screen if returning from a new mode
+  if (calcSwitchedSates == 1){
+    calcSwitchedSates = 0;
+    allLinesCalc.clear();
+    doFull = 1;
 
+    drawCalc();
+
+    einkCalcDynamic(true);
+  }
+
+  // clean input (remove spaces)
+  stripFunction(currentLine,cleanExpression);
+
+  // calculate answer
+  if (cleanExpression != ""){
+    
+    
+    if (cleanExpression == "/4"){
+        CurrentCALCState = CALC4; 
+    
+    }else if (cleanExpression == "/5") {
+        // write current file to text
+        oledWord("Exporting Data to TXT!");
+        allLines = allLinesCalc;
+        
+        for (int i = 0; i < allLines.size();i++){
+          if (!(i%2 == 0)){
+            // remvove '~R~' formatting (not used by txt app)
+            String temp = allLines[i - 1] + " = " + allLines[i].substring(3);
+            allLines[i - 1] =  temp;
+            allLines[i] = "";
+          }
+        }
+        // quite to txt
+        display.fillScreen(GxEPD_WHITE);
+        CurrentAppState = TXT;
+        currentLine     = "";
+        newState        = true;
+        CurrentKBState  = NORMAL;   
+        display.refresh(); 
+
+        
+    } else if (cleanExpression == "/6"){
+      // exit program to home
+      u8g2.clearBuffer();
+      setFastFullRefresh(false);
+      display.fillScreen(GxEPD_WHITE);
+      display.refresh();
+      CurrentAppState = HOME;
+      currentLine     = "";
+      newState        = true;
+      CurrentKBState  = NORMAL;                  
+    } else {
+      // no command, calculate answer
+      dynamicScroll = 0;
+      printAnswer(cleanExpression);
+    }
+  }
+  
+  cleanExpression = "";
+  calculatedResult = "";
+  functionErrorCode = 0;
+  currentLine = "";
+  newLineAdded = true;
+}
+
+// REMOVE SPACES
+void stripFunction(const String& input, String &cleanedInput){
+  cleanedInput = input;  
+  cleanedInput.replace(" ", ""); 
+}
+
+// FORMAT INTO RPN,EVALUATE,SAVE
+int calculate(const String& cleanedInput,String &result){
+  int error = 0;
+  //convert to reverse polish notation for easy calculation
+  std::queue<String> inputRPN = convertToRPN(cleanedInput,error);
+  
+  // if not an error, calculate the RPN expression
+  result = evaluateRPN(inputRPN);
+  prevAns = result;
+  return 0;
+}
+
+// ERROR HANDLING (not implemented)
+void printError(int errorCode){
+  switch (errorCode){
+    case 0:
+    break;
+    case 1:
+      oledWord("Clearing...");
+    break;
+    default:
+      oledWord("Undefined Error");
+    break;
+  }
+}
+
+// ALGORITHM FOR CONVERTING INPUT TO RPN
+std::queue<String> convertToRPN(String expression, int& error) {
+    for (const auto& pair : variables) {
+
+        Serial.println(pair.first + " : " + pair.second);
+    }
+    std::queue<String> outputQueue;
+    std::stack<String> operatorStack;
+    std::vector<String> tokens = tokenize(expression);
+
+    Serial.println("Tokens found:");
+    for (const auto& t : tokens) {
+        Serial.println(t);
+    }
+    error = false;
+
+    // Parenthesis validation
+    int paren_balance = 0;
+    for (char c : expression) {
+        if (c == '(') paren_balance++;
+        else if (c == ')') paren_balance--;
+    }
+    if (paren_balance != 0) {
+        error = true;
+        return outputQueue;
+    }
+
+    std::map<String, int> precedence = {
+        {"&", 0}, {"+", 1}, {"-", 1}, {"'", 2}, {"/", 2}, {"%", 2}, {"\"", 3}, {"!", 4}
+    };
+
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        const String& token = tokens[i];
+        Serial.println("current token = " + token);
+        if (isNumberToken(token) || token == "pi" || token == "e" || token == "ans") {
+            outputQueue.push(token);
+        } 
+        else if (isFunctionToken(token)) {
+            operatorStack.push(token);
+        }
+        else if (token == ",") {
+          while (!operatorStack.empty() && operatorStack.top() != "(") {
+              outputQueue.push(operatorStack.top());
+              operatorStack.pop();
+          }
+        } 
+        else if (isAlpha(token[0])) {
+          if (i + 1 < tokens.size() && tokens[i+1] == "&") {
+              // For assignment, push variable name and & operator
+              outputQueue.push("=var=" + token);  // Special marker for assignment variable
+              operatorStack.push("&");  // Then push assignment operator
+              i++;  // Skip the &
+          } else {
+              outputQueue.push(token);
+          }
+        }
+        else if (token == "(") {
+            operatorStack.push(token);
+        } 
+        else if (token == ")") {
+          while (!operatorStack.empty() && operatorStack.top() != "(") {
+              outputQueue.push(operatorStack.top());
+              operatorStack.pop();
+          }
+          if (!operatorStack.empty()) operatorStack.pop(); // pop "("
+          if (!operatorStack.empty() && isFunctionToken(operatorStack.top())) {
+              outputQueue.push(operatorStack.top());
+              operatorStack.pop();
+          }
+        } 
+        else if (isOperatorToken(token)) {
+          // Handle assignment '='
+          if (token == "&") {
+              // The variable should be the previous token in the original expression
+              if (outputQueue.empty()) {
+                error = true;
+                return outputQueue;
+              }
+              String prev = outputQueue.back();
+              if (!isVariableToken(prev)) {
+                error = true;
+                return outputQueue;
+              }
+          }
+          while (!operatorStack.empty() &&
+                operatorStack.top() != "(" &&
+                precedence[operatorStack.top()] >= precedence[token]) {
+              outputQueue.push(operatorStack.top());
+              operatorStack.pop();
+          }
+          operatorStack.push(token);
+      }
+    }
+
+    while (!operatorStack.empty()) {
+        outputQueue.push(operatorStack.top());
+        operatorStack.pop();
+    }
+
+    return outputQueue;
+}
+
+// ALGORITH FOR EVALUATION RPN
+String evaluateRPN(std::queue<String> rpnQueue) {
+    std::stack<double> evalStack;
+    std::stack<String> varStack;  // NEW: Stack for variable names
+    
+    while (!rpnQueue.empty()) {
+        String token = rpnQueue.front();
+        rpnQueue.pop();
+
+        if (isNumberToken(token)) {
+            evalStack.push(token.toDouble());
+        }
+
+        else if (token == "ans") {
+            evalStack.push(prevAns.toFloat());
+        }
+        else if (isAlpha(token[0]) && !isFunctionToken(token)) {
+          // Check if next token is assignment operator
+          if (!rpnQueue.empty() && rpnQueue.front() == "&") {
+              // Push variable name to varStack
+              varStack.push(token);
+              Serial.println("Stored variable for assignment: " + token);
+          } else {
+              // Regular variable usage
+              if (variables.find(token) != variables.end()) {
+                evalStack.push(variables[token]);
+              } else {
+                return "Error: undefined variable '" + token + "'";
+              }
+          }
+        }
+        // Handle constants
+        else if (token == "pi") {
+            evalStack.push(PI);
+        }
+        else if (token == "e") {
+            evalStack.push(EULER);
+        }
+        // Handle binary operators
+        else if (token == "+") {
+            if (evalStack.size() < 2) return "Error with +";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(a + b);
+        }
+        else if (token == "-") {
+            if (evalStack.size() < 2) return "Error with -";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(a - b);
+        }
+        else if (token == "'") {
+            if (evalStack.size() < 2) return "Error with *";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(a * b);
+        }
+        else if (token == "/") {
+            if (evalStack.size() < 2) return "Error with /";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            if (b == 0) return "Div by 0";
+            evalStack.push(a / b);
+        }
+        else if (token == "\"") {
+            if (evalStack.size() < 2) return "Error with ^";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(pow(a, b));
+        }
+        // Handle unary operators
+        else if (token == "!") {
+            if (evalStack.empty()) return "Error with !";
+            double a = evalStack.top(); evalStack.pop();
+            if (a < 0 || a != floor(a)) return "Error with ! input ";
+            evalStack.push(tgamma(a + 1)); // factorial
+        }
+        // Add modulo operator handling
+        else if (token == "%") {
+            if (evalStack.size() < 2) return "Error with %";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            
+            // Handle modulo with floating-point numbers using fmod
+            if (b == 0) return "Div by 0";
+            evalStack.push(fmod(a, b));
+        }
+        // if there are variables update variables to whatever is in evalStack
+        else if (token == "&") {
+          Serial.println("Processing assignment:");
+          Serial.println("evalStack contents:");
+          // Debug print the entire evalStack
+          std::stack<double> temp = evalStack;
+          while (!temp.empty()) {
+              Serial.println(temp.top());
+              temp.pop();
+          }
+          
+          Serial.println("varStack contents:");
+          // Debug print the entire varStack
+          std::stack<String> tempVar = varStack;
+          while (!tempVar.empty()) {
+              Serial.println(tempVar.top());
+              tempVar.pop();
+          }
+
+          // We need exactly:
+          // - 1 value in evalStack (the value to assign)
+          // - 1 variable name in varStack
+          if (evalStack.size() < 1 || varStack.empty()) {
+              return "Error: assignment needs 1 value and 1 variable";
+          }
+
+          double value = evalStack.top(); evalStack.pop();
+          String varName = varStack.top(); varStack.pop();
+          
+          // Validate variable name
+          if (!isVariableToken(varName)) {
+              return "Error: invalid variable name '" + varName + "'";
+          }
+          
+          variables[varName] = value;
+          evalStack.push(value);  // For chaining
+          
+          Serial.println("Assigned " + varName + " = " + String(value));
+        }
+
+        // Handle functions
+        else if (token == "sin") {
+            if (evalStack.empty()) return "Error with sin";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(sin(a));
+        }
+        else if (token == "asin") {
+            if (evalStack.empty()) return "Error with asin";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(asin(a));
+        }
+        else if (token == "cos") {
+            if (evalStack.empty()) return "Error with cos";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(cos(a));
+        }
+        else if (token == "acos") {
+            if (evalStack.empty()) return "Error with acos";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(acos(a));
+        }
+        else if (token == "tan") {
+            if (evalStack.empty()) return "Error with tan";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(tan(a));
+        }
+        else if (token == "atan") {
+            if (evalStack.empty()) return "Error with atan";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(atan(a));
+        }
+        else if (token == "sqrt") {
+            if (evalStack.empty()) return "Error with sqrt";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(sqrt(a));
+        }
+        else if (token == "exp") {
+            if (evalStack.empty()) return "Error with exp";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(exp(a));
+        }
+        else if (token == "round") {
+            if (evalStack.empty()) return "Error with round";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(round(a));
+        }
+        else if (token == "log") {
+            if (evalStack.empty()) return "Error with log";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(log(a));
+        }
+        else if (token == "log10") {
+            if (evalStack.empty()) return "Error with log10";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(log10(a));
+        }
+        else if (token == "floor") {
+            if (evalStack.empty()) return "Error with floor";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(floor(a));
+        }
+        else if (token == "ceil") {
+            if (evalStack.empty()) return "Error with ceil";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(ceil(a));
+        }
+        else if (token == "abs") {
+            if (evalStack.empty()) return "Error with abs";
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(fabsf(a));
+        }
+
+
+        // handle multiple input functions
+        else if (token == "max") {
+            if (evalStack.size() < 2) return "Error with max";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(max(a, b));
+        }
+        else if (token == "min") {
+            if (evalStack.size() < 2) return "Error with min";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(min(a, b));
+        }
+        else if (token == "pow") {
+            if (evalStack.size() < 2) return "Error with pow";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(pow(a, b));
+        }
+        else if (token == "rand") {
+            if (evalStack.size() < 2) return "Error with rand";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            evalStack.push(random(a, b));
+        }
+        else if (token.startsWith("=var=")) {
+            // This is an assignment variable - push to varStack
+            String varName = token.substring(5);
+            varStack.push(varName);
+            Serial.println("Stored assignment variable: " + varName);
+        }
+
+
+        else if (token == "&") {
+          Serial.println("Processing assignment:");
+          Serial.println("evalStack size: " + String(evalStack.size()));
+          Serial.println("varStack size: " + String(varStack.size()));
+          
+          // We need exactly 1 value and 1 variable
+          if (evalStack.size() < 1 || varStack.empty()) {
+              return "Error: assignment needs 1 value and 1 variable";
+          }
+          
+          double value = evalStack.top(); evalStack.pop();
+          String varName = varStack.top(); varStack.pop();
+          
+          variables[varName] = value;
+          evalStack.push(value);  // For chaining
+          
+          Serial.println("Assigned " + varName + " = " + String(value));
+        }
+        
+        // Add other functions as needed...
+        else {
+            return "Unknown token: " + token;
+        }
+    }
+
+    if (evalStack.size() != 1) {
+        return "Error stack empty";
+    }
+
+    if (evalStack.size() != 1) return "Error: malformed expression";
+    prevAns = String(evalStack.top());
+    return formatNumber(evalStack.top());
+}
+
+// SPLIT STRING INTO TOKENS
+std::vector<String> tokenize(const String& expression) {
+    std::vector<String> tokens;
+    String currentToken = "";
+
+    for (int i = 0; i < expression.length(); ++i) {
+        char c = expression[i];
+
+        if (c == ' ' || c == '\t') {
+            continue;
+        }
+
+        // Handle assignment '=' and equality '=='
+        if (c == '&') {
+            // Single '=' for assignment
+            tokens.push_back("&");  // Keep as & for assignment
+            continue;
+        }
+        
+        if (c == '-' && (i == 0 || expression[i-1] == '(' || isOperatorToken(String(expression[i-1])))) {
+            // Treat as part of a number (unary negation)
+            currentToken += c;
+            continue;
+        }
+
+        // Handle numbers (including decimals)
+        if (isDigit(c) || (c == '.' && i + 1 < expression.length() && isDigit(expression[i + 1]))) {
+            currentToken += c;
+            while (i + 1 < expression.length() &&
+                   (isDigit(expression[i + 1]) || expression[i + 1] == '.')) {
+                currentToken += expression[++i];
+            }
+            tokens.push_back(currentToken);
+            currentToken = "";
+            continue;
+        }
+
+        // Handle alphabetic tokens (variables/functions/constants)
+        if (isAlpha(c)) {
+            currentToken += c;
+            while (i + 1 < expression.length() && isAlphaNumeric(expression[i + 1])) {
+                currentToken += expression[++i];
+            }
+            tokens.push_back(currentToken);
+            currentToken = "";
+            continue;
+        }
+
+        // Handle parentheses with implied multiplication
+        if (c == '(') {
+            if (!tokens.empty()) {
+                String prev = tokens.back();
+                bool insertMultiply = false;
+
+                // If the previous token is a number, constant, or closing paren
+                if (isNumberToken(prev) || prev == ")" || prev == "pi" || prev == "e" || prev == "ans") {
+                    insertMultiply = true;
+                }
+
+                // If it's an alphanumeric and not a known function, assume variable * (
+                if (isAlpha(prev[0]) && !isFunctionToken(prev)) {
+                    insertMultiply = true;
+                }
+
+                if (insertMultiply) {
+                    tokens.push_back("*");
+                }
+            }
+
+            tokens.push_back("(");
+            continue;
+        }
+
+        // Handle closing parens
+        if (c == ')') {
+            tokens.push_back(")");
+            continue;
+        }
+
+
+      // Add this new section for factorial
+      
+      // Handle operators and commas
+      if (isOperatorToken(String(c)) || c == ',') {
+          tokens.push_back(String(c));
+          continue;
+      }
+      if (c == '!') {
+        tokens.push_back("!");
+        continue;
+      }
+
+
+        // Unknown token, treat as error or ignore
+        // Optionally: collect unknown chars into a debug token
+    }
+
+    return tokens;
+}
+// CONFRIM TOKEN IS A NUMBER
+bool isNumberToken(const String& token) {
+    if (token.isEmpty()) return false;
+    
+    size_t start = 0;
+    // CHECK VALUE AFTER UNARY NEGATIVE INPUTS
+    if (token[0] == '-') {
+        start = 1;
+        if (token.length() == 1) return false;
+    }
+    
+    bool hasDecimal = false;
+    // CHECK IF FLOAT NUMBER IS VALID (NO ALPHA + CORRECT ".")
+    for (size_t i = start; i < token.length(); i++) {
+        if (token[i] == '.') {
+            if (hasDecimal) return false;
+            hasDecimal = true;
+            
+            // CHECK FOR FRONT AND BACK '.'
+            // note: currently doesn't allow for ".12"
+            if (i == start || i == token.length() - 1) {
+                return false; // "." at start or end
+            }
+        }
+        else if (!isDigit(token[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+// CONFRIM TOKEN IS A FUNCTION
+bool isFunctionToken(const String& token) {
+  if (token.isEmpty()) return false;
+  return functionsCalc.count(token) > 0;
+}
+// CONFIRM A TOKEN IS A VARIABLE ECLUDING CONSTANTS
+bool isVariableToken(const String& token) {
+    if (token.isEmpty()) return false;
+    // EXCLUDE CONSTANTS
+    if (token == "pi" || token == "e" || token == "ans") return false;
+    if (isFunctionToken(token)) return false;
+
+    // CHECK EACH LETTER TO ENSURE ITS A VARIABLE
+    if (!isAlpha(token[0])) return false;
+    for (size_t i = 1; i < token.length(); i++) {
+        if (!isAlphaNumeric(token[i])) return false;
+    }
+    return true;
+}
+// COMPARE TO SET OF OPERATORS
+// does this improve readability?
+bool isOperatorToken(const String& token) {
+    if (token.isEmpty()) return false;
+    return operatorsCalc.count(token) > 0;
+}
+// CONVERT NUMBER TO FLOAT STRING OR INT STRING
+String formatNumber(double value) {
+    // BUFFER FOR BETTER MEMORY MANAGEMENT W/ INTS
+    char buffer[32];
+    // HANDLE INTEGER EDGE CASE
+    if (value == floor(value)) {
+      snprintf(buffer, sizeof(buffer), "%ld", static_cast<long>(value));
+      return String(buffer); // Still uses String, but avoids internal temp buffers
+    }
+
+    
+    // PRINT UP TO 8 DECIMALS
+    snprintf(buffer, sizeof(buffer), "%.8f", value);
+
+    String result(buffer);
+
+    // REMOVE EXCESS ZEROS
+    int dotPos = result.indexOf('.');
+    if (dotPos != -1) {
+        // START FROM BACK AND ITERATE UNTIL FIRST NON-ZERO OR DOT
+        int lastNonZero = result.length() - 1;
+        while (lastNonZero > dotPos && result[lastNonZero] == '0') {
+            lastNonZero--;
+        }
+        // IF THERE STILL IS A "." REMOVE IT
+        // is this still necessary? I would assume the integer edge case would handle this
+        if (lastNonZero == dotPos) {
+            result.remove(dotPos);
+        } else {
+            result.remove(lastNonZero + 1);
+        }
+    }
+
+    return result;
+}
