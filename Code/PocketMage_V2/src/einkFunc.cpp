@@ -209,6 +209,24 @@ void einkTextDynamic(bool doFull_, bool noRefresh) {
   drawStatusBar("L:" + String(allLines.size()) + " " + editingFile);
 }
 
+
+// CALC FRAME
+void drawCalc(){
+  // SET FONT
+  setTXTFont(currentFont);
+  // DRAW APP
+  display.setFullWindow();
+  display.firstPage();
+  do {
+    drawStatusBar("\"/4\" -> info | \"/6\" -> EXIT");
+    display.drawBitmap(0, 0, calcAllArray[0], 320, 218, GxEPD_BLACK);
+    display.setCursor(25, 20);
+    drawCalcMode();
+    
+  } while (display.nextPage());
+}
+
+
 // CALC EINK TEXT 
 // partial refresh that doesn't write over the calc app bitmap
 // full reset every 10 refreshes (change to 5 if you would like to strictly observe eink refresh guidelines)

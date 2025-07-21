@@ -226,6 +226,10 @@ void setup() {
 
   // Set "random" seed
   randomSeed(analogRead(BAT_SENS));
+  // This would make any call to random use the esp hardware
+  useRealRandomGenerator(true);
+
+
 }
 
 void loop() {
