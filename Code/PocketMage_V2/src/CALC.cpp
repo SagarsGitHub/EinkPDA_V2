@@ -773,138 +773,139 @@ String evaluateRPN(std::queue<String> rpnQueue) {
             if (evalStack.empty()) return "Error with sin";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
-            evalStack.push(convertDeg(sin(a),isRad));
+            a = convertRad(a,isRad);
+
+            evalStack.push(sin(a));
         }
         else if (token == "asin") {
             if (evalStack.empty()) return "Error with asin";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
-            evalStack.push(convertDeg(asin(a),isRad));
+            a = convertRad(a,isRad);
+            evalStack.push(asin(a));
         }
         else if (token == "sinh") {
             if (evalStack.empty()) return "Error with sinh";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
-            evalStack.push(convertDeg(sinh(a),isRad));
+            a = convertRad(a,isRad);
+            evalStack.push(sinh(a));
         }
         else if (token == "csc") {
             if (evalStack.empty()) return "Error with csc";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
+            a = convertRad(a,isRad);
             if (sin(a) == 0) return "Error: divide by zero csc";
-            evalStack.push(convertDeg(1/sin(a),isRad));
+            evalStack.push(1/sin(a));
         }
         else if (token == "acsc") {
             if (evalStack.empty()) return "Error with acsc";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
+            a = convertRad(a,isRad);
             if (asin(a) == 0) return "Error: divide by zero acsc";
-            evalStack.push(convertDeg(1/asin(a),isRad));
+            evalStack.push(1/asin(a));
         }
         
         else if (token == "csch") {
             if (evalStack.empty()) return "Error with csch";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
+            a = convertRad(a,isRad);
             if (sinh(a) == 0) return "Error: divide by zero csch";
-            evalStack.push(convertDeg(1/sinh(a),isRad));
+            evalStack.push(1/sinh(a));
         }
         
         else if (token == "cos") {
             if (evalStack.empty()) return "Error with cos";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
-            evalStack.push(convertDeg(cos(a),isRad));
+            a = convertRad(a,isRad);
+            evalStack.push(cos(a));
         }
         else if (token == "acos") {
             if (evalStack.empty()) return "Error with acos";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
-            evalStack.push(convertDeg(acos(a),isRad));
+            a = convertRad(a,isRad);
+            evalStack.push(acos(a));
         }
         else if (token == "cosh") {
             if (evalStack.empty()) return "Error with cosh";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
-            evalStack.push(convertDeg(cosh(a),isRad));
+            a = convertRad(a,isRad);
+            evalStack.push(cosh(a));
         }
         else if (token == "sec") {
             if (evalStack.empty()) return "Error with sec";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
+            a = convertRad(a,isRad);
             if (cos(a) == 0) return "Error: divide by zero sec";
-            evalStack.push(convertDeg(1/cos(a),isRad));
+            evalStack.push(1/cos(a));
         }
         else if (token == "asec") {
             if (evalStack.empty()) return "Error with asec";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
+            a = convertRad(a,isRad);
             if (acos(a) == 0) return "Error: divide by zero asec";
-            evalStack.push(convertDeg(1/acos(a),isRad));
+            evalStack.push(1/acos(a));
         }
         else if (token == "sech") {
             if (evalStack.empty()) return "Error with sech";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
+            a = convertRad(a,isRad);
             if (cosh(a) == 0) return "Error: divide by zero sech";
-            evalStack.push(convertDeg(1/cosh(a),isRad));
+            evalStack.push(1/cosh(a));
         }
         else if (token == "tan") {
             if (evalStack.empty()) return "Error with tan";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
-            evalStack.push(convertDeg(tan(a),isRad));
+            a = convertRad(a,isRad);
+            evalStack.push(tan(a));
         }
         else if (token == "atan") {
             if (evalStack.empty()) return "Error with atan";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
-            evalStack.push(convertDeg(atan(a),isRad));
+            a = convertRad(a,isRad);
+            evalStack.push(atan(a));
         }
         else if (token == "tanh") {
             if (evalStack.empty()) return "Error with tanh";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
-            evalStack.push(convertDeg(tanh(a),isRad));
+            a = convertRad(a,isRad);
+            evalStack.push(tanh(a));
         }
         else if (token == "cot") {
             if (evalStack.empty()) return "Error with cot";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
+            a = convertRad(a,isRad);
             if (tan(a) == 0) return "Error: divide by zero cot";
-            evalStack.push(convertDeg(1/tan(a),isRad));
+            evalStack.push(1/tan(a));
         }
         else if (token == "acot") {
             if (evalStack.empty()) return "Error with acot";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
+            a = convertRad(a,isRad);
             if (atan(a) == 0) return "Error: divide by zero acot";
-            evalStack.push(convertDeg(1/atan(a),isRad));
+            evalStack.push(1/atan(a));
         }
         else if (token == "coth") {
             if (evalStack.empty()) return "Error with coth";
             double a = evalStack.top(); evalStack.pop();
             // if in degree mode convert from degree to rad
-            convertRad(a,isRad);
+            a = convertRad(a,isRad);
             if (tanh(a) == 0) return "Error: divide by zero coth";
-            evalStack.push(convertDeg(1/tanh(a),isRad));
+            evalStack.push(1/tanh(a));
         }
         else if (token == "sqrt") {
             if (evalStack.empty()) return "Error with sqrt";
@@ -1176,10 +1177,8 @@ bool isConstantToken(const String& token) {
     return constantsCalc.count(token) > 0;
 }
 
-double convertDeg(double radInput,bool isRad){
-  return isRad ? radInput : ((radInput*180.0)/PI);
-}
-
-double convertRad(double degInput,bool isRad){
-  return !isRad ? degInput : ((degInput*PI)/180.0);
+double convertRad(double input,bool isRad){
+  // if in rad mode, do nothing
+  // if in deg mode, conver to rad for functions
+  return isRad ?  input : ((input*PI)/180);
 }
