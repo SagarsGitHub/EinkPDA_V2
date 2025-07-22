@@ -106,6 +106,8 @@ void commandSelect(String command) {
   }
   /////////////////////////////
   else if (command == "calc" || command == "calculator" || command == "math" || command == "7") {
+    currentFont = &FreeMonoBold9pt7b;
+    setTXTFont(currentFont);
     CurrentAppState = CALC;
     CurrentKBState  = FUNC;
     dynamicScroll = 0;

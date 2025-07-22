@@ -209,27 +209,95 @@ void einkTextDynamic(bool doFull_, bool noRefresh) {
   drawStatusBar("L:" + String(allLines.size()) + " " + editingFile);
 }
 
+int countLines(String input, size_t maxLineLength) {
+  size_t inputLength = input.length();
+  uint8_t charCounter = 0;
+  uint16_t lineCounter = 1;
 
+  for (size_t c = 0; c < inputLength; c++) {
+    if (input[c] == '\n') {
+      charCounter = 0;
+      lineCounter++;
+      continue;
+    } else if (charCounter > (maxLineLength - 1)) {
+      charCounter = 0;
+      lineCounter++;
+    }
+    charCounter++;
+  }
+
+  return lineCounter;
+}
+
+///////////////////////////// CALC EINK FUNCTIONS
 // CALC FRAME
 void drawCalc(){
   // SET FONT
   setTXTFont(currentFont);
+  // draw current calculator mode in the top status bar 
+  
   // DRAW APP
   display.setFullWindow();
   display.firstPage();
   do {
+    
     drawStatusBar("\"/4\" -> info | \"/6\" -> EXIT");
     display.drawBitmap(0, 0, calcAllArray[0], 320, 218, GxEPD_BLACK);
     display.setCursor(25, 20);
-    drawCalcMode();
-    
+    switch (CurrentCALCState) {
+      case CALC0:      
+        //standard mode
+        display.print("Calc: Standard Mode");
+        break;
+      case CALC1:
+        //programming mode
+        display.print("Calc: Programming Mode");
+        break;
+      case CALC2:
+        //scientific mode
+        display.print("Calc: Scientific Mode");
+        break;
+      case CALC3:
+        //conversions
+        display.print("Calc: Conversions Mode");
+        break;
+      case CALC4:
+        //help mode
+        display.print("Calc: Help Mode");
+        break;  
+    }
+    display.setCursor(250, 20);
+    if (isRad){
+      display.print("rad");
+    } else {
+      display.print("deg");
+    }
   } while (display.nextPage());
+
 }
 
+// CLOSE CALC AND UPDATE
+void closeCalc(AppState newAppState){
+  // essential to display next app correctly  
+
+  display.setFullWindow();
+  display.fillScreen(GxEPD_WHITE);
+  
+  //display.clearScreen();
+  u8g2.clearBuffer();
+
+  CurrentAppState = newAppState;
+  currentLine     = "";
+  newState        = true;
+  CurrentKBState  = NORMAL; 
+
+  
+
+  refresh(); 
+}
 
 // CALC EINK TEXT 
 // partial refresh that doesn't write over the calc app bitmap
-// full reset every 10 refreshes (change to 5 if you would like to strictly observe eink refresh guidelines)
 void einkCalcDynamic(bool doFull_, bool noRefresh) {
   const int reservedTop = 32;
   const int leftMargin = 8;
@@ -238,30 +306,31 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
 
   setTXTFont(currentFont);
 
-  // Process all lines to handle wrapping
+
   std::vector<String> wrappedLines;
   for (const String& originalLine : allLinesCalc) {
     if (originalLine.length() == 0) {
       wrappedLines.push_back("");
       continue;
-    }
+    }   
 
-    bool rightAlign = originalLine.startsWith("~R~");
-    String line = rightAlign ? originalLine.substring(3) : originalLine;
-
+    String currentLine = "";
+    String currentWord = "";
     // Check if line needs wrapping
     int16_t x1, y1;
     uint16_t lineWidth, lineHeight;
+    bool rightAlign = originalLine.startsWith("~R~");
+    // clip right align marker
+    String line = rightAlign ? originalLine.substring(3) : originalLine;
+    
     display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
 
     if (lineWidth <= maxTextWidth) {
-      wrappedLines.push_back(originalLine); // No wrapping needed
+      wrappedLines.push_back(originalLine);
       continue;
     }
 
-    // Split the line into multiple wrapped lines
-    String currentLine = "";
-    String currentWord = "";
+
     for (int i = 0; i < line.length(); i++) {
       char c = line[i];
       currentWord += c;
@@ -278,7 +347,7 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
           }
           // Handle very long words
           while (currentWord.length() > 0) {
-            int splitPos = 0;
+            int splitPos = 1;
             String testFragment = "";
             while (splitPos < currentWord.length()) {
               testFragment += currentWord[splitPos];
@@ -286,7 +355,6 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
               if (lineWidth > maxTextWidth) break;
               splitPos++;
             }
-            if (splitPos == 0) splitPos = 1; // Ensure progress
             wrappedLines.push_back(rightAlign ? "~R~" + currentWord.substring(0, splitPos) 
                                              : currentWord.substring(0, splitPos));
             currentWord = currentWord.substring(splitPos);
@@ -302,7 +370,7 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
     }
   }
 
-  // Original display logic with wrappedLines instead of allLinesCalc
+  // wrap lines
   uint16_t size = wrappedLines.size();
   uint16_t displayLines = constrain(maxLines - 2, 0, size);
   int scrollOffset = constrain(dynamicScroll, 0, size - displayLines);
@@ -375,7 +443,7 @@ void printAnswer(String cleanExpression) {
   String resultOutput = "";
   int maxWidth = display.width() - 40;
 
-  // Calculate result
+
   int result = calculate(cleanExpression, resultOutput);
 
   // Set font before measuring text
@@ -395,29 +463,10 @@ void printAnswer(String cleanExpression) {
     allLinesCalc.push_back(cleanExpression);
   }
 
-  // Right-align resultOutput in pixels instead of padding with spaces
-  int resultX = display.width() - resultWidth - 60; // 40 = right margin
+  // Right-align resultOutput in pixels
+  int resultX = display.width() - resultWidth - 60; 
 
-  // Or if you're just collecting lines:
-  allLinesCalc.push_back("~R~" + resultOutput); // Marker for "right-align this later"
+  
+  allLinesCalc.push_back("~R~" + resultOutput); // right-align marker 
 }
 
-int countLines(String input, size_t maxLineLength) {
-  size_t inputLength = input.length();
-  uint8_t charCounter = 0;
-  uint16_t lineCounter = 1;
-
-  for (size_t c = 0; c < inputLength; c++) {
-    if (input[c] == '\n') {
-      charCounter = 0;
-      lineCounter++;
-      continue;
-    } else if (charCounter > (maxLineLength - 1)) {
-      charCounter = 0;
-      lineCounter++;
-    }
-    charCounter++;
-  }
-
-  return lineCounter;
-}

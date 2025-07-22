@@ -155,24 +155,98 @@ USBMSC msc;
   std::vector<String> allLinesCalc;
   String cleanExpression = "";
   String calculatedResult = "";
-  int functionErrorCode = 0;
+  bool isRad = 1;
   int calcSwitchedSates = 0;
   String prevAns = "";
-  std::map<String, float> variables= {
-        {"a", 0.0},
-        {"b", 0.0},
-        {"c", 0.0},
-        {"x", 0.0},
-        {"y", 0.0},
-        {"z", 0.0},
-        {"n", 0.0},
-        {"f", 0.0},
-        {"r", 0.0},
+  std::map<String, float> variables= {};
+  std::set<String> constantsCalc = {
+         "inf", "-inf", "pi", "e", "ans"
   };
   std::set<String> operatorsCalc = {
         "+", "-", "'", "/", "%", "=", "!", "\""
   };
   std::set<String> functionsCalc = {
-        "sin", "cos", "tan", "asin", "acos", "atan", "log", "log10", "sqrt", "abs", "exp", "round", "min", "max", "pow", "rand"
+        // trig
+        "sin", "cos", "tan", "asin", "acos", "atan",
+        "sinh", "cosh", "tanh", "sec", "csc", "cot", 
+        "sech", "csch", "coth", "asec", "acsc", "acot",
+        // scientific
+        "log", "log10", "sqrt", "abs", "exp",
+        "round", "min", "max", "pow", "rand"
   };
+  std::map<String, int> precedenceCalc = {
+        {"&", 0}, {"+", 1}, {"-", 1}, {"'", 2}, {"/", 2}, {"%", 2}, {"\"", 3}, {"!", 4}
+    };
+  
+  
   char bufferString[20];
+  std::vector<String>  helpText = {
+    "\n",
+    "    vvv scroll down vvv\n",
+    "This is the help screen\n",
+    "\n",
+    "press enter to exit help mode\n",
+    "NOTES:\n",
+    "  /5 -> EXIT APP\n",
+    "  include \"0.\" in floats\n",
+    "\n",
+    "    vvv scroll down vvv\n",
+    "\n",
+    "\n",
+    "commands:\n",
+    "\n",
+    "    '/' + <command> \n",
+    " 0 : standard\n",
+    "  \n",
+    " 1 : programming\n",
+    "    (not implemented) \n",
+    " 2 : scientific \n",
+    "    (not implemented) \n",
+    " 3 : conversions \n",
+    "    (not implemented) \n",
+    " 4 : help\n",
+    "  \n",
+    " 5 : export to txt\n",
+    "  \n",
+    " 6 : EXIT\n",
+    "  \n",
+    "keyboard changes:\n",
+    "  default kb state:FUNC\n",
+    "  tab && FN(tab) == font\n",
+    "  bksp == fn(bskp)\n",
+    "  left arrow scroll  ^ \n",
+    "  right arrow scroll v \n",
+    "operators:\n",
+    "  \n",
+    " - (unary included)\n",
+    " +\n",
+    " * (type: ' or a(b))\n",
+    " /\n",
+    " %\n",
+    " !\n",
+    " ^ (type: \")\n",
+    " = (type: &)\n",
+    "\n",
+    "functions: \n",
+    "\n",
+    " sin(a) asin(a) sinh(a)\n",
+    " csc(a) acsc(a) csch(a)\n",
+    " cos(a) acos(a) cosh(a)\n",
+    " sec(a) asec(a) sech(a)\n",
+    " tan(a) atan(a) tanh(a)\n",
+    " cot(a) acot(a) coth(a)\n",
+    " sqrt(a)\n",
+    " exp(a)     log(a)\n",
+    " pow(a,b)   log10(a\n",
+    " floor(a)   ceil(a)\n",
+    " min(a)     max(a)\n",
+    " round(a)\n",
+    " abs(a)\n",
+    " rand(a,b)\n",
+    "\n",
+    "variables: \n",
+    "\n",
+    "any alphabetic characters \n",
+    "excluding constants \n",
+    "    ^^^ scroll up ^^^"
+  };

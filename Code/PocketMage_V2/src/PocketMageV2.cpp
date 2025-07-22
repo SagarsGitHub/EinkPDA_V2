@@ -33,9 +33,9 @@ void applicationEinkHandler() {
     case TASKS:
       einkHandler_TASKS();
       break;
-    case CALC:
-      einkHandler_CALC();
     // ADD APP CASES HERE
+        case CALC:
+      einkHandler_CALC();
     default:
       einkHandler_HOME();
       break;
@@ -65,9 +65,10 @@ void processKB() {
       processKB_TASKS();
       break;
     case CALC:
+
+    // ADD APP CASES HERE
       processKB_CALC();
       break;
-    // ADD APP CASES HERE
     default:
       processKB_HOME();
       break;
@@ -191,7 +192,7 @@ void setup() {
   cap.writeRegister(0x30, 0x01); // NHD falling
   // 0xFF before
   cap.writeRegister(0x31, 0x64); // NCL falling
-  cap.writeRegister(0x32, 0x02); // FDL falling
+  cap.writeRegister(0x32, 0x30); // FDL falling
   
   cap.writeRegister(0x5B, 0x01); // Debounce: 1 touch, 1 release
 
@@ -227,6 +228,7 @@ void setup() {
   // Set "random" seed
   randomSeed(analogRead(BAT_SENS));
   // This would make any call to random use the esp hardware
+  // randomSeed sets useRealRandomGenerator false, so this would need to replace randomSeed
   useRealRandomGenerator(true);
 
 

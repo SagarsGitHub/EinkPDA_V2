@@ -10,12 +10,8 @@
 
 
 // !! Commented for code-review
-//  check RAM
-//  Free Heap: Serial.println(String(ESP.getFreeHeap()));
-//  Total Heap: Serial.println(ESP.getHeapSize());
-//  minimum free heap since start: Serial.println(ESP.getMinFreeHeap());
-//  size of largest contiguous block of memory: Serial.println(ESP.getMaxAllocHeap());
 
+///////////////////////////// MAIN FUNCTIONS
 // KB HANDLER
 void processKB_CALC() {
 
@@ -83,16 +79,32 @@ void processKB_CALC() {
         }
         // LEFT (scroll up)
         else if (inchar == 19 || inchar == 5) {
-          if (dynamicScroll < allLinesCalc.size() - 1) dynamicScroll++;
+          if (dynamicScroll < allLinesCalc.size() - 8){
+             dynamicScroll += 8;
+          } else if (dynamicScroll < allLinesCalc.size() - 4){
+             dynamicScroll += 4;
+          } else if (dynamicScroll < allLinesCalc.size() - 2){
+             dynamicScroll += 2;
+          } else if (dynamicScroll < allLinesCalc.size() - 1) {
+            dynamicScroll++;
+          }
           newLineAdded = true;
-          //oledScrollCalc();                               
+                             
           
         }
         // RIGHT (scroll down)
-        else if (inchar == 21 || inchar == 6) {                                  
-          if (dynamicScroll > 1) dynamicScroll--;
+        else if (inchar == 21 || inchar == 6) { 
+          if (dynamicScroll > 19){
+            dynamicScroll -= 8;
+          }else if (dynamicScroll > 15){
+            dynamicScroll -= 4;
+          } else if (dynamicScroll > 13){
+            dynamicScroll -= 2;
+          } else if (dynamicScroll > 12){
+            dynamicScroll--;
+          } 
           newLineAdded = true;
-          //oledScrollCalc();
+
         }
         //BKSP Recieved
         else if (inchar == 8) {    
@@ -247,7 +259,7 @@ void einkHandler_CALC() {
         
         //standard mode
         if (newState && doFull) {
-          //display.fillScreen(GxEPD_WHITE);
+
           
           drawCalc();
           einkCalcDynamic(true);
@@ -258,8 +270,9 @@ void einkHandler_CALC() {
           refresh_count++;
           if (refresh_count > 10){
             drawCalc(); 
-            einkCalcDynamic(true);
             setFastFullRefresh(false);
+            einkCalcDynamic(true);
+            
             refresh_count = 0;
           } else {
             einkCalcDynamic(true);
@@ -290,71 +303,8 @@ void einkHandler_CALC() {
         setTXTFont(currentFont);
         // print out everything needed to understand basics of program, might be memory inefficient, remove or rector
         allLinesCalc.clear();
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back("This is the help screen");
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back("press enter to exit help mode");
-        allLinesCalc.push_back("NOTES:");
-        allLinesCalc.push_back("  /5 -> EXIT APP");
-        allLinesCalc.push_back("  include \"0.\" in floats");
-        allLinesCalc.push_back("   \"a=b\" invalid");
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back("    vvv scroll down vvv");
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back("commands:");
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back("    '/' + <command> ");
-        allLinesCalc.push_back(" 0 : standard");
-        allLinesCalc.push_back("  ");
-        allLinesCalc.push_back(" 1 : programming");
-        allLinesCalc.push_back("    (not implemented) ");
-        allLinesCalc.push_back(" 2 : scientific ");
-        allLinesCalc.push_back("    (not implemented) ");
-        allLinesCalc.push_back(" 3 : conversions ");
-        allLinesCalc.push_back("    (not implemented) ");
-        allLinesCalc.push_back(" 4 : help");
-        allLinesCalc.push_back("  ");
-        allLinesCalc.push_back(" 5 : export to txt");
-        allLinesCalc.push_back("  ");
-        allLinesCalc.push_back(" 6 : EXIT");
-        allLinesCalc.push_back("  ");
-        allLinesCalc.push_back("keyboard changes:");
-        allLinesCalc.push_back("  default kb state:FUNC");
-        allLinesCalc.push_back("  tab && FN(tab) == font");
-        allLinesCalc.push_back("  bksp == fn(bskp)");
-        allLinesCalc.push_back("  left arrow scroll  ^ ");
-        allLinesCalc.push_back("  right arrow scroll v ");
-        allLinesCalc.push_back("operators:");
-        allLinesCalc.push_back("  ");
-        allLinesCalc.push_back(" - (unary included)");
-        allLinesCalc.push_back(" +");
-        allLinesCalc.push_back(" * (type: ' or a(b))");
-        allLinesCalc.push_back(" /");
-        allLinesCalc.push_back(" %");
-        allLinesCalc.push_back(" !");
-        allLinesCalc.push_back(" ^ (type: \")");
-        allLinesCalc.push_back(" = (type: &)");
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back("functions: ");
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back(" sin(a)     asin(a)");
-        allLinesCalc.push_back(" cos(a)     acos(a)");
-        allLinesCalc.push_back(" tan(a)     atan(a)");
-        allLinesCalc.push_back(" sqrt(a)");
-        allLinesCalc.push_back(" exp(a)     log(a)");
-        allLinesCalc.push_back(" pow(a,b)   log10(a");
-        allLinesCalc.push_back(" floor(a)   ceil(a)");
-        allLinesCalc.push_back(" min(a)     max(a)");
-        allLinesCalc.push_back(" round(a)");
-        allLinesCalc.push_back(" abs(a)");
-        allLinesCalc.push_back(" rand(a,b)");
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back("variables: ");
-        allLinesCalc.push_back("");
-        allLinesCalc.push_back("[ans,a,b,c,x,y,z,n,f,r] ");
-        allLinesCalc.push_back("    ^^^ scroll up ^^^");
+        // potentially store helpText in SD card
+        allLinesCalc.insert(allLinesCalc.end(), helpText.begin(), helpText.end());
         dynamicScroll = (allLinesCalc.size() - 11);
         drawCalc(); 
         
@@ -406,6 +356,59 @@ void einkHandler_CALC() {
 }
 
 
+///////////////////////////// SCROLL FUNCTIONS
+// could be abstracted to a processSB_Calc function with an interface set up for every app
+void updateScrollFromTouch_Calc() {
+  //oledWord("checking for touch!");
+
+  uint16_t touched = cap.touched();  // Read touch state
+  if (touched){
+    //oledWord("touched!");
+  }
+  int newTouch = -1;
+
+  // Find the first active touch point (lowest index first)
+  for (int i = 0; i < 3; i++) {
+    if (touched & (1 << i)) {
+      newTouch = i;
+      Serial.print("Prev pad: ");
+      Serial.print(lastTouch);
+      Serial.print("   Touched pad: ");
+      Serial.println(newTouch);
+      break;
+    }
+  }
+
+  unsigned long currentTime = millis();
+
+  if (newTouch != -1) {  // If a touch is detected
+    if (lastTouch != -1) {  // Compare with previous touch
+      int touchDelta = abs(newTouch - lastTouch);
+      if (touchDelta < 2) {  // Ignore large jumps (adjust threshold if needed)
+        int maxScroll = max(0, (int)allLinesCalc.size() - maxLines + 1);  // Ensure a valid scroll range
+        if (newTouch > lastTouch) {
+          dynamicScroll = min((int)(dynamicScroll + 1), maxScroll);
+
+        } else if (newTouch < lastTouch) {
+          dynamicScroll = max((int)(dynamicScroll - 1), 0);
+        }
+      }
+    }
+    lastTouch = newTouch;  // Always update lastTouch
+    lastTouchTime = currentTime;  // Reset timeout timer
+  } 
+  else if (lastTouch != -1) {
+    if (currentTime - lastTouchTime > TOUCH_TIMEOUT_MS) {
+        lastTouch = -1;
+        if (prev_dynamicScroll != dynamicScroll) {
+            newLineAdded = true;
+            prev_dynamicScroll = dynamicScroll; // Update comparison value
+        }
+    }
+  }
+    //Serial.println("update scroll has finished!");
+}
+
 
 ///////////////////////////// ALGORITHMS
 // FORMAT INTO RPN,EVALUATE,SAVE
@@ -443,14 +446,12 @@ std::queue<String> convertToRPN(String expression, int& error) {
         return outputQueue;
     }
 
-    std::map<String, int> precedence = {
-        {"&", 0}, {"+", 1}, {"-", 1}, {"'", 2}, {"/", 2}, {"%", 2}, {"\"", 3}, {"!", 4}
-    };
+    
 
     for (size_t i = 0; i < tokens.size(); ++i) {
         const String& token = tokens[i];
         Serial.println("current token = " + token);
-        if (isNumberToken(token) || token == "pi" || token == "e" || token == "ans") {
+        if (isNumberToken(token) || isConstantToken(token)) {
             outputQueue.push(token);
         } 
         else if (isFunctionToken(token)) {
@@ -463,12 +464,15 @@ std::queue<String> convertToRPN(String expression, int& error) {
           }
         } 
         else if (isAlpha(token[0])) {
+
           if (i + 1 < tokens.size() && tokens[i+1] == "&") {
               // For assignment, push variable name and & operator
+              Serial.println("pushed =var= + variable!");
               outputQueue.push("=var=" + token);  // Special marker for assignment variable
               operatorStack.push("&");  // Then push assignment operator
               i++;  // Skip the &
           } else {
+              Serial.println("pushed variable!");
               outputQueue.push(token);
           }
         }
@@ -502,7 +506,7 @@ std::queue<String> convertToRPN(String expression, int& error) {
           }
           while (!operatorStack.empty() &&
                 operatorStack.top() != "(" &&
-                precedence[operatorStack.top()] >= precedence[token]) {
+                precedenceCalc[operatorStack.top()] >= precedenceCalc[token]) {
               outputQueue.push(operatorStack.top());
               operatorStack.pop();
           }
@@ -594,7 +598,7 @@ std::vector<String> tokenize(const String& expression) {
 
                 if (insertMultiply) {
                     Serial.println("added  * to expression: " + String(c));
-                    tokens.push_back("*");
+                    tokens.push_back("'");
                 }
             }
 
@@ -624,8 +628,10 @@ std::vector<String> tokenize(const String& expression) {
       }
 
 
-        // Unknown token, treat as error or ignore
+      // Unknown token,error
       oledWord("Error: malformed expression");
+      delay(1000);
+      return {}; 
     }
 
     return tokens;
@@ -638,29 +644,16 @@ String evaluateRPN(std::queue<String> rpnQueue) {
     
     while (!rpnQueue.empty()) {
         String token = rpnQueue.front();
+        Serial.println("varstack size = " + String(varStack.size()));
         rpnQueue.pop();
 
+        // !! can declare these else if blocks as inline functions 
         if (isNumberToken(token)) {
             evalStack.push(token.toDouble());
         }
-
+        // Handle previous anser
         else if (token == "ans") {
             evalStack.push(prevAns.toFloat());
-        }
-        else if (isAlpha(token[0]) && !isFunctionToken(token)) {
-          // Check if next token is assignment operator
-          if (!rpnQueue.empty() && rpnQueue.front() == "&") {
-              // Push variable name to varStack
-              varStack.push(token);
-              Serial.println("Stored variable for assignment: " + token);
-          } else {
-              // Regular variable usage
-              if (variables.find(token) != variables.end()) {
-                evalStack.push(variables[token]);
-              } else {
-                return "Error: undefined variable '" + token + "'";
-              }
-          }
         }
         // Handle constants
         else if (token == "pi") {
@@ -669,6 +662,32 @@ String evaluateRPN(std::queue<String> rpnQueue) {
         else if (token == "e") {
             evalStack.push(EULER);
         }
+        else if (isAlpha(token[0]) && !isFunctionToken(token)) {
+          Serial.println("variable check statement");
+          // Check if next token is assignment operator
+          if (rpnQueue.empty() ){
+            evalStack.push(variables[token]);
+            continue;
+          } 
+          Serial.println("after queue empty check");
+          Serial.println("rpn que: " + rpnQueue.front());
+          if (rpnQueue.front() == "&" && rpnQueue.size() > 1) {
+              Serial.println("front &");
+              // Push variable name to varStack
+              varStack.push(token);
+              Serial.println("Stored variable for assignment: " + token);
+          } else {
+              Serial.println("else state");
+              // Regular variable usage
+              if (variables.find(token) != variables.end()) {
+                Serial.println("pushed regular variable");
+                evalStack.push(variables[token]);
+              } else {
+                return "Error: undefined variable '" + token + "'";
+              }
+          }
+        }
+        
         // Handle binary operators
         else if (token == "+") {
             if (evalStack.size() < 2) return "Error with +";
@@ -701,14 +720,6 @@ String evaluateRPN(std::queue<String> rpnQueue) {
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(pow(a, b));
         }
-        // Handle unary operators
-        else if (token == "!") {
-            if (evalStack.empty()) return "Error with !";
-            double a = evalStack.top(); evalStack.pop();
-            if (a < 0 || a != floor(a)) return "Error with ! input ";
-            evalStack.push(tgamma(a + 1)); // factorial
-        }
-        // Add modulo operator handling
         else if (token == "%") {
             if (evalStack.size() < 2) return "Error with %";
             double b = evalStack.top(); evalStack.pop();
@@ -718,76 +729,182 @@ String evaluateRPN(std::queue<String> rpnQueue) {
             if (b == 0) return "Div by 0";
             evalStack.push(fmod(a, b));
         }
-        // if there are variables update variables to whatever is in evalStack
         else if (token == "&") {
-          Serial.println("Processing assignment:");
-          Serial.println("evalStack contents:");
-          // Debug print the entire evalStack
-          std::stack<double> temp = evalStack;
-          while (!temp.empty()) {
-              Serial.println(temp.top());
-              temp.pop();
-          }
-          
-          Serial.println("varStack contents:");
-          // Debug print the entire varStack
-          std::stack<String> tempVar = varStack;
-          while (!tempVar.empty()) {
-              Serial.println(tempVar.top());
-              tempVar.pop();
-          }
 
-          // We need exactly:
-          // - 1 value in evalStack (the value to assign)
-          // - 1 variable name in varStack
-          if (evalStack.size() < 1 || varStack.empty()) {
-              return "Error: assignment needs 1 value and 1 variable";
-          }
 
-          double value = evalStack.top(); evalStack.pop();
+          if (evalStack.size() < 1 && varStack.empty()) {
+
+              return "Error: assignment";
+          }
+          String valueVar;
+          double value;
           String varName = varStack.top(); varStack.pop();
-          
-          // Validate variable name
-          if (!isVariableToken(varName)) {
-              return "Error: invalid variable name '" + varName + "'";
+          //if (!isVariableToken(varName) && !varStack.empty()) return "Error: invalid variable name '" + varName + "'";
+
+            
+          if (evalStack.empty()){
+            if (varStack.empty()) return "Error: value variable missing";
+            varStack.top(); varStack.pop();
+            value = variables[valueVar];
+            evalStack.push(value);
+            variables[varName] = value; 
+          } else {
+            value = evalStack.top(); evalStack.pop();
+            evalStack.push(value); 
+            Serial.println("Set " + varName + " to " + String(value));
+            variables[varName] = value; 
+            
           }
-          
-          variables[varName] = value;
-          evalStack.push(value);  
-          
           Serial.println("Assigned " + varName + " = " + String(value));
+          
         }
 
+        // Handle unary operators
+        else if (token == "!") {
+            if (evalStack.empty()) return "Error with !";
+            double a = evalStack.top(); evalStack.pop();
+            if (a < 0) return "Error with ! input ";
+            evalStack.push(tgamma(a + 1));
+        }
+        
         // Handle functions
+        // Trig functions too numerous and messy, need to do something about repeat code 
         else if (token == "sin") {
             if (evalStack.empty()) return "Error with sin";
             double a = evalStack.top(); evalStack.pop();
-            evalStack.push(sin(a));
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            evalStack.push(convertDeg(sin(a),isRad));
         }
         else if (token == "asin") {
             if (evalStack.empty()) return "Error with asin";
             double a = evalStack.top(); evalStack.pop();
-            evalStack.push(asin(a));
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            evalStack.push(convertDeg(asin(a),isRad));
         }
+        else if (token == "sinh") {
+            if (evalStack.empty()) return "Error with sinh";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            evalStack.push(convertDeg(sinh(a),isRad));
+        }
+        else if (token == "csc") {
+            if (evalStack.empty()) return "Error with csc";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            if (sin(a) == 0) return "Error: divide by zero csc";
+            evalStack.push(convertDeg(1/sin(a),isRad));
+        }
+        else if (token == "acsc") {
+            if (evalStack.empty()) return "Error with acsc";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            if (asin(a) == 0) return "Error: divide by zero acsc";
+            evalStack.push(convertDeg(1/asin(a),isRad));
+        }
+        
+        else if (token == "csch") {
+            if (evalStack.empty()) return "Error with csch";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            if (sinh(a) == 0) return "Error: divide by zero csch";
+            evalStack.push(convertDeg(1/sinh(a),isRad));
+        }
+        
         else if (token == "cos") {
             if (evalStack.empty()) return "Error with cos";
             double a = evalStack.top(); evalStack.pop();
-            evalStack.push(cos(a));
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            evalStack.push(convertDeg(cos(a),isRad));
         }
         else if (token == "acos") {
             if (evalStack.empty()) return "Error with acos";
             double a = evalStack.top(); evalStack.pop();
-            evalStack.push(acos(a));
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            evalStack.push(convertDeg(acos(a),isRad));
+        }
+        else if (token == "cosh") {
+            if (evalStack.empty()) return "Error with cosh";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            evalStack.push(convertDeg(cosh(a),isRad));
+        }
+        else if (token == "sec") {
+            if (evalStack.empty()) return "Error with sec";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            if (cos(a) == 0) return "Error: divide by zero sec";
+            evalStack.push(convertDeg(1/cos(a),isRad));
+        }
+        else if (token == "asec") {
+            if (evalStack.empty()) return "Error with asec";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            if (acos(a) == 0) return "Error: divide by zero asec";
+            evalStack.push(convertDeg(1/acos(a),isRad));
+        }
+        else if (token == "sech") {
+            if (evalStack.empty()) return "Error with sech";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            if (cosh(a) == 0) return "Error: divide by zero sech";
+            evalStack.push(convertDeg(1/cosh(a),isRad));
         }
         else if (token == "tan") {
             if (evalStack.empty()) return "Error with tan";
             double a = evalStack.top(); evalStack.pop();
-            evalStack.push(tan(a));
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            evalStack.push(convertDeg(tan(a),isRad));
         }
         else if (token == "atan") {
             if (evalStack.empty()) return "Error with atan";
             double a = evalStack.top(); evalStack.pop();
-            evalStack.push(atan(a));
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            evalStack.push(convertDeg(atan(a),isRad));
+        }
+        else if (token == "tanh") {
+            if (evalStack.empty()) return "Error with tanh";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            evalStack.push(convertDeg(tanh(a),isRad));
+        }
+        else if (token == "cot") {
+            if (evalStack.empty()) return "Error with cot";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            if (tan(a) == 0) return "Error: divide by zero cot";
+            evalStack.push(convertDeg(1/tan(a),isRad));
+        }
+        else if (token == "acot") {
+            if (evalStack.empty()) return "Error with acot";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            if (atan(a) == 0) return "Error: divide by zero acot";
+            evalStack.push(convertDeg(1/atan(a),isRad));
+        }
+        else if (token == "coth") {
+            if (evalStack.empty()) return "Error with coth";
+            double a = evalStack.top(); evalStack.pop();
+            // if in degree mode convert from degree to rad
+            convertRad(a,isRad);
+            if (tanh(a) == 0) return "Error: divide by zero coth";
+            evalStack.push(convertDeg(1/tanh(a),isRad));
         }
         else if (token == "sqrt") {
             if (evalStack.empty()) return "Error with sqrt";
@@ -862,20 +979,16 @@ String evaluateRPN(std::queue<String> rpnQueue) {
             varStack.push(varName);
             Serial.println("Stored assignment variable: " + varName);
         }
-
-
         else if (token == "&") {
-          Serial.println("Processing assignment:");
-          Serial.println("evalStack size: " + String(evalStack.size()));
-          Serial.println("varStack size: " + String(varStack.size()));
           
           // Needs exactly 1 value and 1 variable
           if (evalStack.size() < 1 || varStack.empty()) {
               return "Error: assignment needs 1 value and 1 variable";
           }
-          
-          double value = evalStack.top(); evalStack.pop();
+
           String varName = varStack.top(); varStack.pop();
+          double value = evalStack.top(); evalStack.pop();
+          
           
           variables[varName] = value;
           evalStack.push(value);  
@@ -890,96 +1003,13 @@ String evaluateRPN(std::queue<String> rpnQueue) {
     }
 
     if (evalStack.size() != 1) return "Error converting RPN: stack empty";
+
     prevAns = String(evalStack.top());
     return formatNumber(evalStack.top());
 }
 
-
-
-
-
-// draws current calculator mode in the top status bard
-void drawCalcMode(){
-  switch (CurrentCALCState) {
-    case CALC0:
-      
-      //standard mode
-      display.print("Calc: Standard Mode");
-      break;
-    case CALC1:
-      //programming mode
-      display.print("Calc: Programming Mode");
-      break;
-    case CALC2:
-      //scientific mode
-      display.print("Calc: Scientific Mode");
-      break;
-    case CALC3:
-      //conversions
-      display.print("Calc: Conversions Mode");
-      break;
-    case CALC4:
-      //help mode
-      display.print("Calc: Help Mode");
-      break;  
-  }
-}
-
-///////////////////////////// SCROLL FUNCTIONS
-// could be abstracted to a processSB_Calc function with an interface set up for every app
-void updateScrollFromTouch_Calc() {
-  //oledWord("checking for touch!");
-
-  uint16_t touched = cap.touched();  // Read touch state
-  if (touched){
-    //oledWord("touched!");
-  }
-  int newTouch = -1;
-
-  // Find the first active touch point (lowest index first)
-  for (int i = 0; i < 3; i++) {
-    if (touched & (1 << i)) {
-      newTouch = i;
-      Serial.print("Prev pad: ");
-      Serial.print(lastTouch);
-      Serial.print("   Touched pad: ");
-      Serial.println(newTouch);
-      break;
-    }
-  }
-
-  unsigned long currentTime = millis();
-
-  if (newTouch != -1) {  // If a touch is detected
-    if (lastTouch != -1) {  // Compare with previous touch
-      int touchDelta = abs(newTouch - lastTouch);
-      if (touchDelta < 2) {  // Ignore large jumps (adjust threshold if needed)
-        int maxScroll = max(0, (int)allLinesCalc.size() - maxLines + 1);  // Ensure a valid scroll range
-        if (newTouch > lastTouch) {
-          dynamicScroll = min((int)(dynamicScroll + 1), maxScroll);
-
-        } else if (newTouch < lastTouch) {
-          dynamicScroll = max((int)(dynamicScroll - 1), 0);
-        }
-      }
-    }
-    lastTouch = newTouch;  // Always update lastTouch
-    lastTouchTime = currentTime;  // Reset timeout timer
-  } 
-  else if (lastTouch != -1) {
-    if (currentTime - lastTouchTime > TOUCH_TIMEOUT_MS) {
-        lastTouch = -1;
-        if (prev_dynamicScroll != dynamicScroll) {
-            newLineAdded = true;
-            prev_dynamicScroll = dynamicScroll; // Update comparison value
-        }
-    }
-  }
-    //Serial.println("update scroll has finished!");
-}
-
 ///////////////////////////// INPUT FUNCTIONS
-// class to clean up CR input in switch statement
+// ENTER (CR) INPUT
 void calcCRInput(){
   // reset eink screen if returning from a new mode
   if (calcSwitchedSates == 1){
@@ -1015,25 +1045,21 @@ void calcCRInput(){
             allLines[i] = "";
           }
         }
-        // quite to txt
-        display.fillScreen(GxEPD_WHITE);
-        CurrentAppState = TXT;
-        currentLine     = "";
-        newState        = true;
-        CurrentKBState  = NORMAL;   
-        display.refresh(); 
 
+        closeCalc(TXT);
         
     } else if (cleanExpression == "/6"){
-      // exit program to home
-      u8g2.clearBuffer();
-      setFastFullRefresh(false);
-      display.fillScreen(GxEPD_WHITE);
-      display.refresh();
-      CurrentAppState = HOME;
-      currentLine     = "";
-      newState        = true;
-      CurrentKBState  = NORMAL;                  
+      
+      closeCalc(HOME);
+            
+    } else if (cleanExpression == "/rad"){
+      
+      isRad = 1;
+      drawCalc();
+    } else if (cleanExpression == "/deg"){
+      
+      isRad = 0;
+      drawCalc();      
     } else {
       // no command, calculate answer
       dynamicScroll = 0;
@@ -1043,12 +1069,15 @@ void calcCRInput(){
   
   cleanExpression = "";
   calculatedResult = "";
-  functionErrorCode = 0;
   currentLine = "";
   newLineAdded = true;
 }
 // CONVERT NUMBER TO FLOAT STRING OR INT STRING
 String formatNumber(double value) {
+    
+    if (value > INT_MAX) return "inf";
+    if (value < INT_MIN) return "-inf";
+    Serial.println("formating " + String(value));
     char buffer[32];
     // handle integer test case
     if (value == floor(value)) {
@@ -1061,7 +1090,7 @@ String formatNumber(double value) {
     snprintf(buffer, sizeof(buffer), "%.8f", value);
 
     String result(buffer);
-
+    Serial.println("looking at zeros" + result);
     // trim excess zeros (implement different handling w/ scientific mode: variable for sig figs, and check calc state)
     int dotPos = result.indexOf('.');
     if (dotPos != -1) {
@@ -1070,12 +1099,17 @@ String formatNumber(double value) {
         while (lastNonZero > dotPos && result[lastNonZero] == '0') {
             lastNonZero--;
         }
-
+        if (lastNonZero == 1) {
+          result = result.substring(0,lastNonZero + 2);
+        } else {
+          result = result.substring(0,lastNonZero + 1);
+        }
     }
-
+    Serial.println("formated result " + result);
     return result;
 }
 // REMOVE SPACES
+// time inefficient N -> 2N, ignorable
 void stripFunction(const String& input, String &cleanedInput){
   cleanedInput = input;  
   cleanedInput.replace(" ", ""); 
@@ -1121,7 +1155,7 @@ bool isFunctionToken(const String& token) {
 bool isVariableToken(const String& token) {
     if (token.isEmpty()) return false;
     // EXCLUDE CONSTANTS
-    if (token == "pi" || token == "e" || token == "ans") return false;
+    if (isConstantToken(token)) return false;
     if (isFunctionToken(token)) return false;
 
     // CHECK EACH LETTER TO ENSURE ITS A VARIABLE
@@ -1132,8 +1166,20 @@ bool isVariableToken(const String& token) {
     return true;
 }
 // COMPARE TO SET OF OPERATORS
-// does this improve readability?
 bool isOperatorToken(const String& token) {
     if (token.isEmpty()) return false;
     return operatorsCalc.count(token) > 0;
+}
+// COMPARE TO SET OF CONSTANTS
+bool isConstantToken(const String& token) {
+      if (token.isEmpty()) return false;
+    return constantsCalc.count(token) > 0;
+}
+
+double convertDeg(double radInput,bool isRad){
+  return isRad ? radInput : ((radInput*180.0)/PI);
+}
+
+double convertRad(double degInput,bool isRad){
+  return !isRad ? degInput : ((degInput*PI)/180.0);
 }

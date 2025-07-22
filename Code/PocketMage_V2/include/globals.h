@@ -160,13 +160,17 @@ extern int refresh_count;
 extern std::vector<String> allLinesCalc;
 extern String cleanExpression;
 extern String calculatedResult;
-extern int functionErrorCode;
 extern int calcSwitchedSates;
 extern String prevAns;
 extern std::map<String, float> variables;
 extern  std::set<String> operatorsCalc;
 extern  std::set<String> functionsCalc;
+extern std::set<String> constantsCalc;
+extern std::map<String, int> precedenceCalc;
+extern std::vector<String> helpText;
 extern char bufferString[20];
+extern bool isRad;
+
 // <TASKS.ino>
 extern std::vector<std::vector<String>> tasks;
 extern uint8_t selectedTask;
@@ -243,6 +247,7 @@ void setTXTFont(const GFXfont *font);
 void setFastFullRefresh(bool setting);
 void drawStatusBar(String input);
 void printAnswer(String resultOutput);
+void closeCalc(AppState newAppState);
 
 // <FILEWIZ.ino>
 void processKB_FILEWIZ();
@@ -277,7 +282,9 @@ std::vector<String> tokenize(const String& expression);
 bool isVariableToken(const String& token);
 bool isFunctionToken(const String& token);
 bool isOperatorToken(const String& token);
-
+bool isConstantToken(const String& token);
+double convertDeg(double input, bool isRad);
+double convertRad(double input, bool isRad);
 
 // <HOME.ino>
 void einkHandler_HOME();
