@@ -150,14 +150,20 @@ USBMSC msc;
   String workingFile = "";
 
   // <CALC.ino>
+  #define REFRESH_MAX_CALC 10
+  #define SCROLL_MAX 8
+  #define SCROLL_MED 4
+  #define SCROLL_SML 2
   CALCState CurrentCALCState = CALC0;
+  int calcSwitchedStates = 0;
+  int trigType = 1;
   int refresh_count = 0;
   std::vector<String> allLinesCalc;
   String cleanExpression = "";
   String calculatedResult = "";
-  bool isRad = 1;
-  int calcSwitchedSates = 0;
+  
   String prevAns = "";
+  char bufferString[20];
   std::map<String, float> variables= {};
   std::set<String> constantsCalc = {
          "inf", "-inf", "pi", "e", "ans"
@@ -171,15 +177,14 @@ USBMSC msc;
         "sinh", "cosh", "tanh", "sec", "csc", "cot", 
         "sech", "csch", "coth", "asec", "acsc", "acot",
         // scientific
-        "log", "log10", "sqrt", "abs", "exp",
-        "round", "min", "max", "pow", "rand"
+        "ln", "log", "sqrt", "abs", "exp",
+        "round", "min", "max", "pow", "rand",
+        // fun
+        "dice"
   };
   std::map<String, int> precedenceCalc = {
-        {"&", 0}, {"+", 1}, {"-", 1}, {"'", 2}, {"/", 2}, {"%", 2}, {"\"", 3}, {"!", 4}
+        {":", 0}, {"+", 1}, {"-", 1}, {"'", 2}, {"/", 2}, {"%", 2}, {"\"", 3}, {"!", 4}, {"~neg~",4}
     };
-  
-  
-  char bufferString[20];
   std::vector<String>  helpText = {
     "\n",
     "    vvv scroll down vvv\n",

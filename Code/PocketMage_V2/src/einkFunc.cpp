@@ -235,13 +235,15 @@ void drawCalc(){
   // SET FONT
   setTXTFont(currentFont);
   // draw current calculator mode in the top status bar 
-  
   // DRAW APP
   display.setFullWindow();
   display.firstPage();
   do {
-    
-    drawStatusBar("\"/4\" -> info | \"/6\" -> EXIT");
+    if (CurrentCALCState == CALC4){
+      drawStatusBar("<- -> scroll | enter -> EXIT");
+    } else {
+      drawStatusBar("\"/4\" -> info | \"/6\" -> EXIT");
+    }
     display.drawBitmap(0, 0, calcAllArray[0], 320, 218, GxEPD_BLACK);
     display.setCursor(25, 20);
     switch (CurrentCALCState) {
@@ -267,10 +269,19 @@ void drawCalc(){
         break;  
     }
     display.setCursor(250, 20);
-    if (isRad){
-      display.print("rad");
-    } else {
-      display.print("deg");
+    switch (trigType){
+      // 0 = degree mode
+      case (0):
+        display.print("deg");
+      break;
+      // 1 = radian mode
+      case (1):
+        display.print("rad");
+      break;
+      // 2 = grad mode
+      case (2):
+        display.print("grad");
+      break;
     }
   } while (display.nextPage());
 
@@ -279,20 +290,13 @@ void drawCalc(){
 // CLOSE CALC AND UPDATE
 void closeCalc(AppState newAppState){
   // essential to display next app correctly  
-
   display.setFullWindow();
   display.fillScreen(GxEPD_WHITE);
-  
-  //display.clearScreen();
   u8g2.clearBuffer();
-
   CurrentAppState = newAppState;
   currentLine     = "";
   newState        = true;
   CurrentKBState  = NORMAL; 
-
-  
-
   refresh(); 
 }
 
@@ -303,17 +307,13 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
   const int leftMargin = 8;
   const int rightMargin = 20;
   const int maxTextWidth = display.width() - leftMargin - rightMargin;
-
   setTXTFont(currentFont);
-
-
   std::vector<String> wrappedLines;
   for (const String& originalLine : allLinesCalc) {
     if (originalLine.length() == 0) {
       wrappedLines.push_back("");
       continue;
     }   
-
     String currentLine = "";
     String currentWord = "";
     // Check if line needs wrapping
@@ -321,25 +321,19 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
     uint16_t lineWidth, lineHeight;
     bool rightAlign = originalLine.startsWith("~R~");
     // clip right align marker
-    String line = rightAlign ? originalLine.substring(3) : originalLine;
-    
+    String line = rightAlign ? originalLine.substring(3) : originalLine; 
     display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-
     if (lineWidth <= maxTextWidth) {
       wrappedLines.push_back(originalLine);
       continue;
     }
-
-
     for (int i = 0; i < line.length(); i++) {
       char c = line[i];
       currentWord += c;
-
       // Check word boundaries (space or end of string)
       if (c == ' ' || i == line.length() - 1) {
         String testLine = currentLine + currentWord;
         display.getTextBounds(testLine, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-
         if (lineWidth > maxTextWidth) {
           if (currentLine.length() > 0) {
             wrappedLines.push_back(rightAlign ? "~R~" + currentLine : currentLine);
@@ -355,8 +349,7 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
               if (lineWidth > maxTextWidth) break;
               splitPos++;
             }
-            wrappedLines.push_back(rightAlign ? "~R~" + currentWord.substring(0, splitPos) 
-                                             : currentWord.substring(0, splitPos));
+            wrappedLines.push_back(rightAlign ? "~R~" + currentWord.substring(0, splitPos) : currentWord.substring(0, splitPos));
             currentWord = currentWord.substring(splitPos);
           }
         } else {
@@ -369,37 +362,30 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
       wrappedLines.push_back(rightAlign ? "~R~" + currentLine : currentLine);
     }
   }
-
   // wrap lines
   uint16_t size = wrappedLines.size();
   uint16_t displayLines = constrain(maxLines - 2, 0, size);
   int scrollOffset = constrain(dynamicScroll, 0, size - displayLines);
-
   int startLine = size - displayLines - scrollOffset;
   int endLine = size - scrollOffset;
   int totalTextHeight = (fontHeight + lineSpacing) * displayLines;
   totalTextHeight -= totalTextHeight % 8;
-
   if (doFull_) {
     display.setPartialWindow(leftMargin, reservedTop, maxTextWidth, totalTextHeight);
     display.firstPage();
     do {
       display.fillRect(leftMargin, reservedTop, maxTextWidth, totalTextHeight, GxEPD_WHITE);
-
       for (int i = startLine; i < endLine; i++) {
         if (wrappedLines[i].length() == 0) continue;
         int lineIndex = i - startLine;
         int y = reservedTop + (fontHeight + lineSpacing) * lineIndex;
         y -= y % 8;
-
         String line = wrappedLines[i];
         bool rightAlign = line.startsWith("~R~");
         if (rightAlign) line.remove(0, 3);
-
         int16_t x1, y1;
         uint16_t lineWidth, lineHeight;
         display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-
         const int paddingFix = 2;
         int xPos = rightAlign ? (display.width() - rightMargin - lineWidth - paddingFix) : leftMargin;
         display.setCursor(xPos, y + fontHeight);
@@ -413,24 +399,19 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
       h -= h % 8;
       int y = reservedTop;
       y -= y % 8;
-
       display.setPartialWindow(leftMargin, y, maxTextWidth, h);
       display.firstPage();
       do {
         display.fillRect(leftMargin, y, maxTextWidth, h, GxEPD_WHITE);
-
         String line = allLinesCalc[i];
         bool rightAlign = line.startsWith("~R~");
         if (rightAlign) line.remove(0, 3);  // Strip "~R~"
-
         int16_t x1, y1;
         uint16_t lineWidth, lineHeight;
         display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-
         int xPos = rightAlign ? (display.width() - rightMargin - lineWidth) : leftMargin;
         display.setCursor(xPos, y + fontHeight);
         display.print(line);
-
       } while (display.nextPage());
     }
   }
@@ -442,17 +423,12 @@ void printAnswer(String cleanExpression) {
   uint16_t exprWidth, resultWidth, charHeight;
   String resultOutput = "";
   int maxWidth = display.width() - 40;
-
-
   int result = calculate(cleanExpression, resultOutput);
-
   // Set font before measuring text
   display.setFont(currentFont);
-
   // Measure widths
   display.getTextBounds(cleanExpression, 0, 0, &x1, &y1, &exprWidth, &charHeight);
   display.getTextBounds(resultOutput, 0, 0, &x1, &y1, &resultWidth, &charHeight);
-
   // Clip long expressions
   if (exprWidth > maxWidth) {
     int mid = cleanExpression.length() / 2;
@@ -462,11 +438,8 @@ void printAnswer(String cleanExpression) {
   } else {
     allLinesCalc.push_back(cleanExpression);
   }
-
   // Right-align resultOutput in pixels
   int resultX = display.width() - resultWidth - 60; 
-
-  
   allLinesCalc.push_back("~R~" + resultOutput); // right-align marker 
 }
 

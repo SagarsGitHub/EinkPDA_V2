@@ -160,7 +160,7 @@ extern int refresh_count;
 extern std::vector<String> allLinesCalc;
 extern String cleanExpression;
 extern String calculatedResult;
-extern int calcSwitchedSates;
+extern int calcSwitchedStates;
 extern String prevAns;
 extern std::map<String, float> variables;
 extern  std::set<String> operatorsCalc;
@@ -169,7 +169,7 @@ extern std::set<String> constantsCalc;
 extern std::map<String, int> precedenceCalc;
 extern std::vector<String> helpText;
 extern char bufferString[20];
-extern bool isRad;
+extern int trigType;
 
 // <TASKS.ino>
 extern std::vector<std::vector<String>> tasks;
@@ -231,8 +231,8 @@ extern String workingFile;
 void oledWord(String word);
 void oledLine(String line, bool doProgressBar = true);
 void oledScroll();
-void oledScrollCalc();
 void infoBar();
+void oledScrollCalc(); // Calc function
 
 // <einkFunc.ino>
 void refresh();
@@ -242,12 +242,13 @@ void einkTextPartial(String text, bool noRefresh = false);
 void drawThickLine(int x0, int y0, int x1, int y1, int thickness);
 int  countLines(String input, size_t maxLineLength = 29);
 void einkTextDynamic(bool doFull_, bool noRefresh = false);
-void einkCalcDynamic(bool doFull_, bool noRefresh = false);
 void setTXTFont(const GFXfont *font);
 void setFastFullRefresh(bool setting);
 void drawStatusBar(String input);
-void printAnswer(String resultOutput);
-void closeCalc(AppState newAppState);
+void printAnswer(String resultOutput);  // Calc
+void drawCalc(); // Calc
+void closeCalc(AppState newAppState); // Calc
+void einkCalcDynamic(bool doFull_, bool noRefresh = false);  // Calc
 
 // <FILEWIZ.ino>
 void processKB_FILEWIZ();
@@ -266,25 +267,21 @@ void updateScrollFromTouch();
 // <CALC.ino>
 void einkHandler_CALC();
 void processKB_CALC();
-void drawCalc();
-void drawCalcMode();
-void calcCRInput();
-void updateScrollFromTouch_Calc();
-void stripFunction(const String& input, String &cleanedInput);
+
+void updateScrollFromTouch_Calc(); // new processSB_Calc?
 int calculate(const String& cleanedInput,String &resultOutput);
-void printError(int errorCode);
-std::queue<String> convertToRPN(String expression,int& error);
-String evaluateRPN(std::queue<String> rpnQueue);
-bool isNumberToken(const String& token);
-bool isOperator(const String& token);
-String formatNumber(double value);
+std::deque<String> convertToRPN(String expression);
+String evaluateRPN(std::deque<String> rpnQueue);
 std::vector<String> tokenize(const String& expression);
+void calcCRInput();
+String formatNumber(double value);
+bool isNumberToken(const String& token);
 bool isVariableToken(const String& token);
 bool isFunctionToken(const String& token);
 bool isOperatorToken(const String& token);
 bool isConstantToken(const String& token);
-double convertDeg(double input, bool isRad);
-double convertRad(double input, bool isRad);
+double convertTrig(double input, int trigType);
+
 
 // <HOME.ino>
 void einkHandler_HOME();
