@@ -234,41 +234,43 @@ int countLines(String input, size_t maxLineLength) {
 void drawCalc(){
   // SET FONT
   setTXTFont(currentFont);
-  // draw current calculator mode in the top status bar 
-  // DRAW APP
   display.setFullWindow();
   display.firstPage();
   do {
+    // print status bar
     if (CurrentCALCState == CALC4){
       drawStatusBar("<- -> scroll | enter -> EXIT");
     } else {
       drawStatusBar("\"/4\" -> info | \"/6\" -> EXIT");
     }
+    // draw calc bitmap
     display.drawBitmap(0, 0, calcAllArray[0], 320, 218, GxEPD_BLACK);
+    // print current calc mode
     display.setCursor(25, 20);
     switch (CurrentCALCState) {
       case CALC0:      
         //standard mode
-        display.print("Calc: Standard Mode");
+        display.print("Calc: Standard");
         break;
       case CALC1:
         //programming mode
-        display.print("Calc: Programming Mode");
+        display.print("Calc: Programming");
         break;
       case CALC2:
         //scientific mode
-        display.print("Calc: Scientific Mode");
+        display.print("Calc: Scientific");
         break;
       case CALC3:
         //conversions
-        display.print("Calc: Conversions Mode");
+        display.print("Calc: Conversions");
         break;
       case CALC4:
         //help mode
-        display.print("Calc: Help Mode");
+        display.print("Calc: Help");
         break;  
     }
-    display.setCursor(250, 20);
+    // print current trig mode
+    display.setCursor(240, 20);
     switch (trigType){
       // 0 = degree mode
       case (0):

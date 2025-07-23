@@ -105,7 +105,7 @@ void commandSelect(String command) {
     // OPEN SETTINGS
   }
   /////////////////////////////
-  else if (command == "calc" || command == "calculator" || command == "math" || command == "7") {
+  else if (command == "calc" || command == "calculator" || command == "math" || command == "10") {
     currentFont = &FreeMonoBold9pt7b;
     setTXTFont(currentFont);
     CurrentAppState = CALC;

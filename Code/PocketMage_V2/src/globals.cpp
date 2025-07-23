@@ -90,7 +90,7 @@ USBMSC msc;
   bool noSD = false;
 
   const String appStateNames[] = { "txt", "filewiz", "usb", "bt", "settings", "tasks", "calc" };
-  const unsigned char *appIcons[7] = { _homeIcons2, _homeIcons3, _homeIcons4, _homeIcons5, _homeIcons6, taskIconTasks0, _homeIcons7 };
+  const unsigned char *appIcons[7] = { _homeIcons2, _homeIcons3, _homeIcons4, _homeIcons5, _homeIcons6, taskIconTasks0, _homeIcons10 };
   AppState CurrentAppState = HOME;
 
   // <TXT.ino>
@@ -161,8 +161,8 @@ USBMSC msc;
   std::vector<String> allLinesCalc;
   String cleanExpression = "";
   String calculatedResult = "";
+  String prevLine = "";
   
-  String prevAns = "";
   char bufferString[20];
   std::map<String, float> variables= {};
   std::set<String> constantsCalc = {
@@ -190,10 +190,11 @@ USBMSC msc;
     "    vvv scroll down vvv\n",
     "This is the help screen\n",
     "\n",
-    "press enter to exit help mode\n",
+    "press enter to exit help\n",
+    "\n",
     "NOTES:\n",
-    "  /5 -> EXIT APP\n",
-    "  include \"0.\" in floats\n",
+    "  /6 -> EXIT APP\n",
+    "  scroll <- ->\n",
     "\n",
     "    vvv scroll down vvv\n",
     "\n",
@@ -215,9 +216,15 @@ USBMSC msc;
     "  \n",
     " 6 : EXIT\n",
     "  \n",
+    " rad : radian mode\n",
+    "  \n",
+    " deg : degree mode\n",
+    "  \n",
+    " grad : gradian mode\n",
+    "  \n",
     "keyboard changes:\n",
     "  default kb state:FUNC\n",
-    "  tab && FN(tab) == font\n",
+    "  tab && fn(tab) == font\n",
     "  bksp == fn(bskp)\n",
     "  left arrow scroll  ^ \n",
     "  right arrow scroll v \n",
@@ -230,7 +237,7 @@ USBMSC msc;
     " %\n",
     " !\n",
     " ^ (type: \")\n",
-    " = (type: &)\n",
+    " = (type: :)\n",
     "\n",
     "functions: \n",
     "\n",
@@ -247,11 +254,12 @@ USBMSC msc;
     " min(a)     max(a)\n",
     " round(a)\n",
     " abs(a)\n",
-    " rand(a,b)\n",
+    " rand(a,b) from min a -> b\n",
+    " dice(a,b) a: num b:sides\n",
     "\n",
     "variables: \n",
     "\n",
-    "any alphabetic characters \n",
+    "must start with alpha char \n",
     "excluding constants \n",
     "    ^^^ scroll up ^^^"
   };

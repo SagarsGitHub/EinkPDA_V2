@@ -6,16 +6,14 @@
 // `88b    ooo   .8'     `888.   888       o `88b    ooo //
 //  `Y8bood8P'  o88o     o8888o o888ooooood8  `Y8bood8P' // 
 #include "globals.h"
-#define REFRESH_MAX_CALC 10
-#define SCROLL_MAX 8
-#define SCROLL_MED 4
-#define SCROLL_SML 2
+
 
 
 // !! Commented for code-review
 // to-do 
-// remove magic numbers
 // create unified error handling system
+// make convertToRPN && evaluateRPN able to handle standard notation inputs from other apps
+// implement line substitution with !!, currently only previous answer substitution implemented
 // implement scientific notation (e notation + complex numbers + matrix multiplication)
 // implement for loops and conditionals
 // programming mode
@@ -381,7 +379,6 @@ int calculate(const String& cleanedInput,String &result){
   
   // calculate the RPN expression
   result = evaluateRPN(inputRPN);
-  prevAns = result;
   return 0;
 }
 
@@ -391,10 +388,6 @@ std::deque<String> convertToRPN(String expression) {
     std::stack<String> operatorStack;
     std::vector<String> tokens = tokenize(expression);
 
-    Serial.println("Tokens found:");
-    for (const auto& t : tokens) {
-        Serial.println(t);
-    }
     // Parenthesis validation
     int paren_balance = 0;
     for (char c : expression) {
@@ -481,6 +474,8 @@ std::deque<String> convertToRPN(String expression) {
 }
 
 // SPLIT STRING INTO TOKENS
+// can make tokenize add proper operators instead of replacement operators so that convertToRPN is able to handle standard notation inputs from other apps
+// i.e. ":" -> "=", "'" -> "*", "\"" -> "^"
 std::vector<String> tokenize(const String& expression) {
     std::vector<String> tokens;
     String currentToken = "";
@@ -491,7 +486,7 @@ std::vector<String> tokenize(const String& expression) {
         // Handle assignment '='
         if (c == ':') {
             // Single '=' for assignment
-            Serial.println("encountered equals sign (&) in tokenizer: " + String(c));
+            Serial.println("encountered equals sign (:) in tokenizer: " + String(c));
             tokens.push_back(":");  // Keep as & for assignment
             continue;
         }
@@ -600,7 +595,7 @@ String evaluateRPN(std::deque<String> rpnQueue) {
         }
         // Handle previous answer
         else if (token == "ans") {
-            evalStack.push(prevAns.toFloat());
+            evalStack.push(variables["ans"]);
         }
         // Handle constants
         else if (token == "pi") {
@@ -619,6 +614,7 @@ String evaluateRPN(std::deque<String> rpnQueue) {
               return "Error: undefined variable '" + token + "'";
           }
         }
+
         // Handle binary operators
         else if (token == "+") {
             if (evalStack.size() < 2) return "Error with +";
@@ -677,7 +673,7 @@ String evaluateRPN(std::deque<String> rpnQueue) {
             evalStack.push(tgamma(a + 1));
         }
         
-        // Handle functions
+        // Handle trig functions
         // Trig functions too numerous and messy, need to do something about repeat code 
         else if (token == "sin") {
             if (evalStack.empty()) return "Error with sin";
@@ -688,8 +684,9 @@ String evaluateRPN(std::deque<String> rpnQueue) {
         else if (token == "asin") {
             if (evalStack.empty()) return "Error with asin";
             double a = evalStack.top(); evalStack.pop();
-            a = convertTrig(a,trigType);
-            evalStack.push(asin(a));
+            if (a < -1 || a > 1) return "Error: domain of asin";
+            a = convertTrig(asin(a),trigType,true);
+            evalStack.push(a);
         }
         else if (token == "sinh") {
             if (evalStack.empty()) return "Error with sinh";
@@ -707,9 +704,11 @@ String evaluateRPN(std::deque<String> rpnQueue) {
         else if (token == "acsc") {
             if (evalStack.empty()) return "Error with acsc";
             double a = evalStack.top(); evalStack.pop();
-            a = convertTrig(a,trigType);
-            if (asin(a) == 0) return "Error: divide by zero acsc";
-            evalStack.push(1/asin(a));
+            if (a==0) return "Error: divide by zero acsc";
+            double inv = 1/a;
+            if (inv < -1 || inv > 1) return "Error: domain of acsc";
+            a = convertTrig(asin(inv),trigType,true);
+            evalStack.push(a);
         }
         else if (token == "csch") {
             if (evalStack.empty()) return "Error with csch";
@@ -727,8 +726,10 @@ String evaluateRPN(std::deque<String> rpnQueue) {
         else if (token == "acos") {
             if (evalStack.empty()) return "Error with acos";
             double a = evalStack.top(); evalStack.pop();
-            a = convertTrig(a,trigType);
-            evalStack.push(acos(a));
+            if (a < -1 || a > 1) return "Error: domain of acos";
+            if (a == 0) a = PI/2; // to avoid precision errors
+            a = convertTrig(acos(a),trigType,true);
+            evalStack.push(a);
         }
         else if (token == "cosh") {
             if (evalStack.empty()) return "Error with cosh";
@@ -743,12 +744,15 @@ String evaluateRPN(std::deque<String> rpnQueue) {
             if (cos(a) == 0) return "Error: divide by zero sec";
             evalStack.push(1/cos(a));
         }
+        // could add logic to handle a = +inf == PI/2
         else if (token == "asec") {
             if (evalStack.empty()) return "Error with asec";
             double a = evalStack.top(); evalStack.pop();
-            a = convertTrig(a,trigType);
-            if (acos(a) == 0) return "Error: divide by zero asec";
-            evalStack.push(1/acos(a));
+            if (a==0) return "Error: divide by zero acsc";
+            double inv = 1/a;
+            if (inv < -1 || inv > 1) return "Error: domain of acsc";
+            a = convertTrig(acos(inv),trigType,true);
+            evalStack.push(a);
         }
         else if (token == "sech") {
             if (evalStack.empty()) return "Error with sech";
@@ -766,8 +770,8 @@ String evaluateRPN(std::deque<String> rpnQueue) {
         else if (token == "atan") {
             if (evalStack.empty()) return "Error with atan";
             double a = evalStack.top(); evalStack.pop();
-            a = convertTrig(a,trigType);
-            evalStack.push(atan(a));
+            a = convertTrig(atan(a),trigType,true);
+            evalStack.push(a);
         }
         else if (token == "tanh") {
             if (evalStack.empty()) return "Error with tanh";
@@ -785,9 +789,17 @@ String evaluateRPN(std::deque<String> rpnQueue) {
         else if (token == "acot") {
             if (evalStack.empty()) return "Error with acot";
             double a = evalStack.top(); evalStack.pop();
-            a = convertTrig(a,trigType);
-            if (atan(a) == 0) return "Error: divide by zero acot";
-            evalStack.push(1/atan(a));
+            double result;
+            if (a == 0) {
+              // acot(0) = π/2
+              result = PI / 2; 
+            } else {
+              // returns value in (−π/2, π/2)
+              result = atan(1/a);
+              // shift to principal range (0, π) 
+              if (a<0) result += PI; 
+            }
+            evalStack.push(convertTrig(a,trigType,true));
         }
         else if (token == "coth") {
             if (evalStack.empty()) return "Error with coth";
@@ -796,6 +808,8 @@ String evaluateRPN(std::deque<String> rpnQueue) {
             if (tanh(a) == 0) return "Error: divide by zero coth";
             evalStack.push(1/tanh(a));
         }
+
+        // handle single input functions
         else if (token == "sqrt") {
             if (evalStack.empty()) return "Error with sqrt";
             double a = evalStack.top(); evalStack.pop();
@@ -892,7 +906,7 @@ String evaluateRPN(std::deque<String> rpnQueue) {
       double value = evalStack.top();
       variables[varName] = value;
     }
-    prevAns = String(evalStack.top());
+    variables["ans"] = evalStack.top();
     return formatNumber(evalStack.top());
 }
 
@@ -911,9 +925,22 @@ void calcCRInput(){
   currentLine.replace(" ", ""); 
   // parse commands
   if (currentLine != ""){
-    if (currentLine == "/4"){
+    if (currentLine == "!!"){
+      printAnswer(prevLine);
+    } 
+    else if (currentLine == "/1"){
+        oledWord("Programming Mode not implemented"); 
+    }
+    else if (currentLine == "/2"){
+        oledWord("Scientific Mode not implemented"); 
+    }
+    else if (currentLine == "/3"){
+        oledWord("Conversion Mode not implemented"); 
+    }
+    else if (currentLine == "/4"){
         CurrentCALCState = CALC4; 
-    }else if (currentLine == "/5") {
+    }
+    else if (currentLine == "/5") {
         // write current file to text
         oledWord("Exporting Data to TXT!");
         allLines = allLinesCalc;
@@ -927,20 +954,26 @@ void calcCRInput(){
         }
         delay(200);
         closeCalc(TXT);
-    } else if (currentLine == "/6"){
+    }
+    else if (currentLine == "/6"){
       closeCalc(HOME);
-    } else if (currentLine == "/grad"){
+    }
+    else if (currentLine == "/grad"){
       trigType = 2;
       drawCalc();
-    } else if (currentLine == "/rad"){
+    }
+    else if (currentLine == "/rad"){
       trigType = 1;
       drawCalc();
-    } else if (currentLine == "/deg"){
+    }
+    else if (currentLine == "/deg"){
       trigType = 0;
       drawCalc();      
-    } else {
+    }
+    else {
       // no command, calculate answer
       dynamicScroll = 0;
+      prevLine = currentLine;
       printAnswer(currentLine);
     }
   }
@@ -955,8 +988,8 @@ String formatNumber(double value) {
     if (value < INT_MIN) return "-inf";
     char buffer[32];
     // handle integer test case
-    if (value == floor(value)) {
-      snprintf(buffer, sizeof(buffer), "%lld", static_cast<long long>(value));
+    if (fabs(value - round(value)) < 1e-9) {
+      snprintf(buffer, sizeof(buffer), "%lld", static_cast<long long>(round(value)));
       return String(buffer);
     }
     // print up to 8 decimals
@@ -1040,11 +1073,11 @@ bool isConstantToken(const String& token) {
     return constantsCalc.count(token) > 0;
 }
 // CONVERT TRIG INPUTS
-double convertTrig(double input,int trigType){
+double convertTrig(double input,int trigType,bool reverse){
   switch (trigType){
     // 0 = degree mode
     case (0):
-      return ((input*PI)/180);
+      return reverse? ((input*180)/PI) : ((input*PI)/180);
     break;
     // 1 = radian mode
     case (1):
@@ -1052,7 +1085,7 @@ double convertTrig(double input,int trigType){
     break;
     // 2 = grad mode
     case (2):
-      return ((input*PI)/200);
+      return reverse? ((input*200)/PI) : ((input*PI)/200);
     break;
     default:
       return input;

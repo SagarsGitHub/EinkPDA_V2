@@ -30,7 +30,7 @@ extern const unsigned char _homeIcons3 [] PROGMEM;
 extern const unsigned char _homeIcons4 [] PROGMEM;
 extern const unsigned char _homeIcons5 [] PROGMEM;
 extern const unsigned char _homeIcons6 [] PROGMEM;
-extern const unsigned char _homeIcons7 [] PROGMEM;
+extern const unsigned char _homeIcons10 [] PROGMEM;
 extern const int _allArray_LEN;
 extern const unsigned char* homeIconsAllArray[6];
 

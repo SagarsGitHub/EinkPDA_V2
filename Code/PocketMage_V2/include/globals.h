@@ -155,13 +155,18 @@ extern unsigned long lastTouchTime;
 
 // <CALC.ino>
 enum CALCState { CALC0, CALC1, CALC2, CALC3, CALC4, CALCFONT };
+// max refreshes before a full refresh is forced (change to 5 for eink longevity)
+#define REFRESH_MAX_CALC 10
+#define SCROLL_MAX 8
+#define SCROLL_MED 4
+#define SCROLL_SML 2
 extern CALCState CurrentCALCState;
 extern int refresh_count;
 extern std::vector<String> allLinesCalc;
 extern String cleanExpression;
 extern String calculatedResult;
 extern int calcSwitchedStates;
-extern String prevAns;
+extern String prevLine;
 extern std::map<String, float> variables;
 extern  std::set<String> operatorsCalc;
 extern  std::set<String> functionsCalc;
@@ -170,6 +175,7 @@ extern std::map<String, int> precedenceCalc;
 extern std::vector<String> helpText;
 extern char bufferString[20];
 extern int trigType;
+
 
 // <TASKS.ino>
 extern std::vector<std::vector<String>> tasks;
@@ -280,7 +286,7 @@ bool isVariableToken(const String& token);
 bool isFunctionToken(const String& token);
 bool isOperatorToken(const String& token);
 bool isConstantToken(const String& token);
-double convertTrig(double input, int trigType);
+double convertTrig(double input, int trigType,bool reverse = false);
 
 
 // <HOME.ino>
