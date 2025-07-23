@@ -926,6 +926,7 @@ void calcCRInput(){
   // parse commands
   if (currentLine != ""){
     if (currentLine == "!!"){
+      dynamicScroll = 0;
       printAnswer(prevLine);
     } 
     else if (currentLine == "/1"){

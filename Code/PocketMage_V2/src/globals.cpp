@@ -236,6 +236,7 @@ USBMSC msc;
     " /\n",
     " %\n",
     " !\n",
+    " !! repeat prev line\n",
     " ^ (type: \")\n",
     " = (type: :)\n",
     "\n",
