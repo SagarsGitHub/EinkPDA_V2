@@ -153,7 +153,7 @@ extern volatile long int prev_dynamicScroll;
 extern int lastTouch;
 extern unsigned long lastTouchTime;
 
-// <CALC.ino>
+// <CALC.cpp>
 enum CALCState { CALC0, CALC1, CALC2, CALC3, CALC4, CALCFONT };
 // max refreshes before a full refresh is forced (change to 5 for eink longevity)
 #define REFRESH_MAX_CALC 10

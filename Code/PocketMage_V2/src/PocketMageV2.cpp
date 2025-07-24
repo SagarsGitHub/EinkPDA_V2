@@ -34,8 +34,9 @@ void applicationEinkHandler() {
       einkHandler_TASKS();
       break;
     // ADD APP CASES HERE
-        case CALC:
+    case CALC:
       einkHandler_CALC();
+      break;
     default:
       einkHandler_HOME();
       break;
@@ -64,9 +65,8 @@ void processKB() {
     case TASKS:
       processKB_TASKS();
       break;
-    case CALC:
-
     // ADD APP CASES HERE
+    case CALC:
       processKB_CALC();
       break;
     default:

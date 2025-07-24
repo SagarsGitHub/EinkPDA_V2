@@ -162,7 +162,6 @@ USBMSC msc;
   String cleanExpression = "";
   String calculatedResult = "";
   String prevLine = "";
-  
   char bufferString[20];
   std::map<String, float> variables= {};
   std::set<String> constantsCalc = {
@@ -177,7 +176,7 @@ USBMSC msc;
         "sinh", "cosh", "tanh", "sec", "csc", "cot", 
         "sech", "csch", "coth", "asec", "acsc", "acot",
         // scientific
-        "ln", "log", "sqrt", "abs", "exp",
+        "ln", "log", "sqrt", "cbrt", "abs", "exp",
         "round", "min", "max", "pow", "rand",
         // fun
         "dice"
