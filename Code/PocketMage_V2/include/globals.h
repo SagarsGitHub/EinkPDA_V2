@@ -261,6 +261,7 @@ void processKB_FILEWIZ();
 void einkHandler_FILEWIZ();
 
 // <TXT.ino>
+void TXT_INIT();
 void processKB_TXT();
 void einkHandler_TXT();
 void processKB_TXT_NEW();
@@ -273,7 +274,7 @@ void updateScrollFromTouch();
 // <CALC.ino>
 void einkHandler_CALC();
 void processKB_CALC();
-
+void CALC_INIT();
 void updateScrollFromTouch_Calc(); // new processSB_Calc?
 int calculate(const String& cleanedInput,String &resultOutput);
 std::deque<String> convertToRPN(String expression);

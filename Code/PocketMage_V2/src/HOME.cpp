@@ -106,15 +106,7 @@ void commandSelect(String command) {
   }
   /////////////////////////////
   else if (command == "calc" || command == "calculator" || command == "math" || command == "10") {
-    currentFont = &FreeMonoBold9pt7b;
-    setTXTFont(currentFont);
-    CurrentAppState = CALC;
-    CurrentKBState  = FUNC;
-    dynamicScroll = 0;
-    forceSlowFullUpdate = true;
-    newState = true;
-    doFull = true;
-    newLineAdded = false;
+    CALC_INIT();
   }
   /////////////////////////////
   else if (command == "i farted") {

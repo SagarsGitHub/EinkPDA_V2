@@ -19,13 +19,29 @@
 // programming mode
 
 ///////////////////////////// MAIN FUNCTIONS
+// CALC INITIALIZETION
+void CALC_INIT() {
+  // open calc
+  CurrentAppState = CALC;
+  CurrentCALCState = CALC0;
+  CurrentKBState = FUNC;
+
+  dynamicScroll = 0;
+  prev_dynamicScroll = -1;
+  lastTouch = -1;
+  newState = true;
+  doFull = true;
+  disableTimeout = false;
+  setTXTFont(&FreeMonoBold9pt7b);
+  currentLine = "";
+}
+
 // KB HANDLER
 void processKB_CALC() {
   if (OLEDPowerSave) {
     u8g2.setPowerSave(0);
     OLEDPowerSave = false;
   }
-  disableTimeout = false;
   int currentMillis = millis();
   if (currentMillis - KBBounceMillis >= KB_COOLDOWN) {  
     char inchar = updateKeypress();
@@ -274,7 +290,7 @@ void einkHandler_CALC() {
         //help mode
         currentFont = &FreeMonoBold9pt7b;
         setTXTFont(currentFont);
-        // print out everything needed to understand basics of program, might be memory inefficient, remove or rector
+        // print out everything needed to understand basics of program, might be memory inefficient, remove or refactor
         allLinesCalc.clear();
         // potentially store helpText in SD card
         allLinesCalc.insert(allLinesCalc.end(), helpText.begin(), helpText.end());
@@ -387,6 +403,7 @@ std::deque<String> convertToRPN(String expression) {
     std::deque<String> outputQueue;
     std::stack<String> operatorStack;
     std::vector<String> tokens = tokenize(expression);
+    // Serial.println("Converting to RPN: " + expression);
 
     // Parenthesis validation
     int paren_balance = 0;
@@ -416,10 +433,10 @@ std::deque<String> convertToRPN(String expression) {
         else if (isAlpha(token[0])) {
           if (i + 1 < tokens.size() && tokens[i+1] == ":") {
               // For assignment, push variable name marker to output
-              Serial.println("pushed ~var~ + variable!");
+              //Serial.println("pushed ~var~ + variable!");
               outputQueue.push_back("~var~" + token);
           } else {
-              Serial.println("pushed variable!");
+              //Serial.println("pushed variable!");
               outputQueue.push_back(token);
           }
         }
@@ -438,7 +455,7 @@ std::deque<String> convertToRPN(String expression) {
           }
         } 
         if ((token == "~neg~")) {
-          Serial.println("pushed unary negation! RPN");
+          //Serial.println("pushed unary negation! RPN");
           operatorStack.push(String(-1*variables[tokens[i+1]]));
           i++;
           continue;
@@ -479,7 +496,7 @@ std::deque<String> convertToRPN(String expression) {
 std::vector<String> tokenize(const String& expression) {
     std::vector<String> tokens;
     String currentToken = "";
-
+    // println("Tokenizing expression: " + expression);
     for (int i = 0; i < expression.length(); ++i) {
         char c = expression[i];
 
@@ -579,7 +596,11 @@ std::vector<String> tokenize(const String& expression) {
 String evaluateRPN(std::deque<String> rpnQueue) {
     std::stack<double> evalStack;
     std::stack<String> varStack;
-    
+    /*
+    for (auto it = rpnQueue.begin(); it != rpnQueue.end(); it++) {
+      Serial.println("RPN Token: " + *it);
+    }
+    */
     while (!rpnQueue.empty()) {
         String token = rpnQueue.front();
         rpnQueue.pop_front();
@@ -895,6 +916,23 @@ String evaluateRPN(std::deque<String> rpnQueue) {
               Serial.println("current roll: " + String(roll));
             }
             evalStack.push(roll);
+        }
+        else if (token == "pick"){
+            if (evalStack.size() < 1) return "Error with pick no n arg";
+            int a = static_cast<int>(evalStack.top()); evalStack.pop();
+            int choices = a;
+
+            if (evalStack.size() < choices) return "Error with pick not enough choices";
+            int pickedValue = random(1, choices+1);
+            double valueToPush = 0;
+            for (int i = 0; i < choices; i++){
+              Serial.println("picking from choice: " + String(i));
+              double poppedValue = evalStack.top(); evalStack.pop();
+              if (i == (choices - pickedValue)) {
+                valueToPush = poppedValue;
+              }
+            }
+            evalStack.push(valueToPush);
         }
         else {
             return "Unknown token: " + token;
