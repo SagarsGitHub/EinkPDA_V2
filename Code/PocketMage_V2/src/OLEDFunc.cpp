@@ -188,3 +188,63 @@ void oledScroll() {
   // SEND BUFFER 
   u8g2.sendBuffer();
 }
+
+///////////////////////////// CALC FUNCTIONS
+// calc specific oled
+void oledScrollCalc() {
+  // CLEAR DISPLAY
+  u8g2.clearBuffer();
+
+  // DRAW BACKGROUND
+  u8g2.drawXBMP(0, 0, 128, 32, scrolloled0);
+
+  // DRAW LINES PREVIEW
+  long int count = allLinesCalc.size();
+  long int startIndex = max((long int)(count - dynamicScroll), 0L);
+  long int endIndex = max((long int)(count - dynamicScroll - 9), 0L);
+
+  for (long int i = startIndex; i > endIndex && i >= 0; i--) {
+    if (i >= count) continue;  // Ensure i is within bounds
+
+    int16_t x1, y1;
+    uint16_t charWidth, charHeight;
+
+    // CHECK IF LINE STARTS WITH A TAB
+    if (allLinesCalc[i].startsWith("    ")) {
+      display.getTextBounds(allLinesCalc[i].substring(4), 0, 0, &x1, &y1, &charWidth, &charHeight);
+      int lineWidth = map(charWidth, 0, 320, 0, 49);
+
+      lineWidth = constrain(lineWidth, 0, 49);
+
+      // REMOVED TAB BOX DRAWING
+      //u8g2.drawBox(68, 28 - (4 * (startIndex - i)), lineWidth, 2);
+    }
+    else {
+      display.getTextBounds(allLinesCalc[i], 0, 0, &x1, &y1, &charWidth, &charHeight);
+      int lineWidth = map(charWidth, 0, 320, 0, 56);
+
+      lineWidth = constrain(lineWidth, 0, 56);
+
+      u8g2.drawBox(61, 28 - (4 * (startIndex - i)), lineWidth, 2);
+    }
+
+  }
+
+  // PRINT CURRENT LINE
+  u8g2.setFont(u8g2_font_ncenB08_tr);
+  String lineNumStr = String(startIndex) + "/" + String(count);
+  u8g2.drawStr(0,12,"Line:");
+  u8g2.drawStr(0,24,lineNumStr.c_str());
+
+  // PRINT LINE PREVIEW
+  if (startIndex >= 0 && startIndex < allLinesCalc.size()) {
+    String line = allLinesCalc[startIndex];
+    if (line.length() > 0) {
+      u8g2.setFont(u8g2_font_ncenB18_tr);
+      u8g2.drawStr(140, 24, line.c_str());
+    }
+  }
+
+  // SEND BUFFER 
+  u8g2.sendBuffer();
+}

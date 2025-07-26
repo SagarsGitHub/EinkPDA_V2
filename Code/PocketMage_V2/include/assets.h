@@ -30,8 +30,9 @@ extern const unsigned char _homeIcons3 [] PROGMEM;
 extern const unsigned char _homeIcons4 [] PROGMEM;
 extern const unsigned char _homeIcons5 [] PROGMEM;
 extern const unsigned char _homeIcons6 [] PROGMEM;
+extern const unsigned char _homeIcons10 [] PROGMEM;
 extern const int _allArray_LEN;
-extern const unsigned char* homeIconsAllArray[5];
+extern const unsigned char* homeIconsAllArray[6];
 
 //
 extern const unsigned char fileWizardfileWiz0 [] PROGMEM;
@@ -65,6 +66,10 @@ extern const unsigned char* nowLaterallArray[4];
 extern const unsigned char tasksApp0 [] PROGMEM;
 extern const unsigned char tasksApp1 [] PROGMEM;
 
+//
+extern const unsigned char calcApp0 [] PROGMEM;
+extern const int calcAllArray_LEN;
+extern const unsigned char* calcAllArray[1];
 //
 extern const unsigned char taskIconTasks0 [] PROGMEM;
 
