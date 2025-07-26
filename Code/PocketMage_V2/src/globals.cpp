@@ -149,6 +149,11 @@ USBMSC msc;
   FileWizState CurrentFileWizState = WIZ0_;
   String workingFile = "";
 
+
+  // Rohan's stuff
+    FileWizState VERY_IMPORTANT_THING = WIZ0_;
+  String workingFileYoYo = "";
+
   // <CALC.ino>
   #define REFRESH_MAX_CALC 10
   #define SCROLL_MAX 8
@@ -263,3 +268,4 @@ USBMSC msc;
     "excluding constants \n",
     "    ^^^ scroll up ^^^"
   };
+
