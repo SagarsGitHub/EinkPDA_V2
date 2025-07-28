@@ -15,8 +15,36 @@ volatile bool GxEPD2_310_GDEQ031T10::useFastFullUpdate = true;
 //U8G2_SSD1326_ER_256X32_F_4W_HW_SPI u8g2(U8G2_R2, OLED_CS, OLED_DC, OLED_RST); //256x32
 U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE); //128x32
 
+// <Unicode.cpp>
+const int SCREEN_HEIGHT = 320;
+const int SCREEN_WIDTH = 240;
+const int bufferSize = (SCREEN_WIDTH * SCREEN_HEIGHT / 8);
+uint8_t u8g2Buffer[bufferSize];
+
+U8G2Bitmap u8g2Bitmap;
+
+U8G2Bitmap::U8G2Bitmap() {
+  u8g2_Setup_null(&this->u8g2, &u8g2_cb_r0, u8x8_byte_empty, &u8x8_dummy_cb);
+
+  // Correct buffer setup
+  this->u8g2.tile_buf_ptr = u8g2Buffer;
+  this->u8g2.tile_buf_height = 1;  // Single page buffer
+
+  
+
+  this->u8g2.u8x8.display_cb = &my_display_cb;
+  this->u8g2.u8x8.cad_cb = &my_cad_cb;
+  
+  // Initialize display
+  u8g2_InitDisplay(&this->u8g2);
+  u8g2_SetPowerSave(&this->u8g2, 0); // Wake up display
+}
+
 // Keypad setup
 Adafruit_TCA8418 keypad;
+
+
+
 
 // Buzzer
 //Buzzer buzzer(17);
@@ -265,3 +293,4 @@ USBMSC msc;
     "excluding constants \n",
     "    ^^^ scroll up ^^^"
   };
+

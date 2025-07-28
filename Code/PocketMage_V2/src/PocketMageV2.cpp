@@ -89,6 +89,7 @@ void setup() {
   Serial.begin(115200);
   Wire.begin(I2C_SDA, I2C_SCL);
   //SPI.begin(SPI_SCK, -1, SPI_MOSI, -1);
+  // Init U8g2 with Adafruit GFX 
 
   // OLED SETUP
   u8g2.begin();
@@ -96,9 +97,22 @@ void setup() {
   u8g2.setPowerSave(0);
   u8g2.clearBuffer();
   u8g2.sendBuffer();
+  u8g2.setFont(u8g2_font_unifont_t_japanese1);
+  u8g2.enableUTF8Print();
+  u8g2.setCursor(0,20);
+  u8g2.print("   ポケ魔法使い  ");
 
+  u8g2.sendBuffer();
+
+  // unicode setup
+  u8g2Bitmap.begin();
+  u8g2Bitmap.setFont(u8g2_font_unifont_t_japanese1);
+  u8g2Bitmap.setFontMode(1);     // Transparent
+  u8g2Bitmap.setDrawColor(1);    // Draw black
+  u8g2Bitmap.enableUTF8Print();
+  u8g2Bitmap.setBitmapMode(1);
   // SHOW "PocketMage" while DEVICE BOOTS
-  oledWord("   PocketMage   ");
+  //oledWord("   PocketMage ");
 
   // STARTUP JINGLE
   //playJingle("startup");

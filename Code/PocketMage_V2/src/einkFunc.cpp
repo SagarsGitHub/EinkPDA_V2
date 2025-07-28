@@ -232,9 +232,16 @@ int countLines(String input, size_t maxLineLength) {
 ///////////////////////////// CALC EINK FUNCTIONS
 // CALC FRAME
 void drawCalc(){
+
+
   // SET FONT
+
   setTXTFont(currentFont);
+  Serial.println("Drawing test japanese text");
   display.setFullWindow();
+  renderTextToBuffer("こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは世界こんにちは世界");
+  drawBufferToEPD();
+  /*
   display.firstPage();
   do {
     // print status bar
@@ -286,7 +293,7 @@ void drawCalc(){
       break;
     }
   } while (display.nextPage());
-  
+  */
 }
 
 // CLOSE CALC AND UPDATE

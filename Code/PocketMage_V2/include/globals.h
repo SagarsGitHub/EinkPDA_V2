@@ -5,6 +5,7 @@
 #include <Arduino.h>
 #include <GxEPD2_BW.h>
 #include <U8g2lib.h>
+//#include <U8g2_for_Adafruit_GFX.h>
 #include <Wire.h>
 #include <Adafruit_TCA8418.h>
 #include <vector>
@@ -49,6 +50,7 @@
 //u8g2_font_boutique_bitmap_9x9_tf
 //u8g2_font_courR08_tf.h
 
+
 // Display
 extern GxEPD2_BW<GxEPD2_310_GDEQ031T10, GxEPD2_310_GDEQ031T10::HEIGHT> display;
 //extern volatile bool useFastFullUpdate;
@@ -56,6 +58,18 @@ extern GxEPD2_BW<GxEPD2_310_GDEQ031T10, GxEPD2_310_GDEQ031T10::HEIGHT> display;
 //extern U8G2_SSD1326_ER_256X32_F_4W_HW_SPI u8g2;           // 256x32 SPI OLED
 extern U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2;       // 128x32 I2C OLED
 //extern U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE);
+
+// <Unicode.cpp>
+extern const int SCREEN_HEIGHT;
+extern const int SCREEN_WIDTH;
+extern const int bufferSize;
+extern uint8_t u8g2Buffer[];
+class U8G2Bitmap : public U8G2 {
+public:
+  U8G2Bitmap();
+};
+extern U8G2Bitmap u8g2Bitmap; 
+
 // Keypad
 extern Adafruit_TCA8418 keypad;
 extern char keysArray[4][10];
@@ -198,40 +212,42 @@ extern String workingFile;
 
 
 
+
+
 // FUNCTION PROTOTYPES
 // <sysFunc.ino>
-  // SYSTEM
-  void checkTimeout();
-  void PWR_BTN_irq();
-  void TCA8418_irq();
-  char updateKeypress();
-  void printDebug();
-  String vectorToString();
-  void stringToVector(String inputText);
-  void saveFile();
-  void writeMetadata(fs::FS &fs, const String& path);
-  void loadFile();
-  void delFile( String fileName);
-  void deleteMetadata(fs::FS &fs, String path);
-  void renFile(String oldFile, String newFile);
-  void renMetadata(fs::FS &fs, String oldPath, String newPath);
-  void copyFile(String oldFile, String newFile);
-  void updateBattState();
-  String removeChar(String str, char character);
-  void appendToFile(String path, String inText);
-  void setCpuSpeed(int newFreq);
-  void playJingle(String jingle);
-  void deepSleep(bool alternateScreenSaver = false);
+// SYSTEM
+void checkTimeout();
+void PWR_BTN_irq();
+void TCA8418_irq();
+char updateKeypress();
+void printDebug();
+String vectorToString();
+void stringToVector(String inputText);
+void saveFile();
+void writeMetadata(fs::FS &fs, const String& path);
+void loadFile();
+void delFile( String fileName);
+void deleteMetadata(fs::FS &fs, String path);
+void renFile(String oldFile, String newFile);
+void renMetadata(fs::FS &fs, String oldPath, String newPath);
+void copyFile(String oldFile, String newFile);
+void updateBattState();
+String removeChar(String str, char character);
+void appendToFile(String path, String inText);
+void setCpuSpeed(int newFreq);
+void playJingle(String jingle);
+void deepSleep(bool alternateScreenSaver = false);
 
-  // microSD
-  void listDir(fs::FS &fs, const char *dirname);
-  void readFile(fs::FS &fs, const char *path);
-  String readFileToString(fs::FS &fs, const char *path);
-  void writeFile(fs::FS &fs, const char *path, const char *message);
-  void appendFile(fs::FS &fs, const char *path, const char *message);
-  void renameFile(fs::FS &fs, const char *path1, const char *path2);
-  void deleteFile(fs::FS &fs, const char *path);
-  void setTimeFromString(String timeStr);
+// microSD
+void listDir(fs::FS &fs, const char *dirname);
+void readFile(fs::FS &fs, const char *path);
+String readFileToString(fs::FS &fs, const char *path);
+void writeFile(fs::FS &fs, const char *path, const char *message);
+void appendFile(fs::FS &fs, const char *path, const char *message);
+void renameFile(fs::FS &fs, const char *path1, const char *path2);
+void deleteFile(fs::FS &fs, const char *path);
+void setTimeFromString(String timeStr);
 
 // <OLEDFunc.ino>
 void oledWord(String word);
@@ -311,4 +327,11 @@ void processKB_TASKS();
 void applicationEinkHandler();
 void processKB();
 
+// <Unicode.cpp>
+// Class Definitions
+void drawBufferToEPD();
+void renderTextToBuffer(const char* text);
+uint8_t my_display_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
+uint8_t my_cad_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
+void initU8G2AltBitmap();
 #endif // GLOBALS_H

@@ -8,13 +8,6 @@
 #include "globals.h"
                                                      
 void oledWord(String word) {
-  //u8g2.enableUTF8Print();
-  //u8g2.setFont(u8g2_font_b12_t_japanese1);
-  
-  //u8g2.setCursor(0,20);
-  //u8g2.print("この度は世界樹の迷宮");
-  //u8g2.sendBuffer();
-  //delay(1000);
   u8g2.clearBuffer();
   
   u8g2.setFont(u8g2_font_ncenB24_tr);
