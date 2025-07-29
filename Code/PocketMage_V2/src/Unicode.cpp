@@ -32,7 +32,7 @@ uint8_t my_display_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
         // Calculate pixel start positions
         uint16_t x_pix = x_tile * 8;
         uint16_t y_pix = y_tile * 8;
-
+        
         // For each tile in this line
         for (uint8_t tile_index = 0; tile_index < cnt; tile_index++) {
         // For each vertical byte in tile (8 bytes = 8 rows vertically)
@@ -40,11 +40,6 @@ uint8_t my_display_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
             // Byte of pixels for this row in the current tile
             uint8_t pixel_byte = ptr[row + tile_index * 8];
 
-            // Write this byte into your RAM buffer at correct location
-            // For example, if your buffer is arranged horizontally per byte:
-            // buffer[(y_pix + row) * SCREEN_WIDTH/8 + (x_pix / 8) + tile_index] = pixel_byte;
-
-            // If buffer is linear pixels in vertical bytes, adjust accordingly.
             uint16_t buffer_index = (y_pix + row) * (SCREEN_WIDTH / 8) + (x_pix / 8) + tile_index;
             u8g2Buffer[buffer_index] = pixel_byte;
         }
