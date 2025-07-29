@@ -6,11 +6,13 @@ void renderTextToBuffer(const char *text) {
   u8g2Bitmap.setFont(u8g2_font_unifont_t_japanese1);
 
   u8g2Bitmap.drawUTF8(0, 16, text);
+  u8g2Bitmap.sendBuffer();
 }
 
 void drawBufferToEPD() {
   display.flush();
   display.fillScreen(GxEPD_WHITE);  // Clear the display
+  Serial.println("Drawing buffer to EPD...");
   display.drawBitmap(0, 0, u8g2Buffer, SCREEN_WIDTH, SCREEN_HEIGHT, GxEPD_BLACK);
 }
 
@@ -35,14 +37,14 @@ uint8_t my_display_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
         
         // For each tile in this line
         for (uint8_t tile_index = 0; tile_index < cnt; tile_index++) {
-        // For each vertical byte in tile (8 bytes = 8 rows vertically)
-        for (uint8_t row = 0; row < 8; row++) {
-            // Byte of pixels for this row in the current tile
-            uint8_t pixel_byte = ptr[row + tile_index * 8];
+          // For each vertical byte in tile (8 bytes = 8 rows vertically)
+          for (uint8_t row = 0; row < 8; row++) {
+              // Byte of pixels for this row in the current tile
+              uint8_t pixel_byte = ptr[row + tile_index * 8];
 
-            uint16_t buffer_index = (y_pix + row) * (SCREEN_WIDTH / 8) + (x_pix / 8) + tile_index;
-            u8g2Buffer[buffer_index] = pixel_byte;
-        }
+              uint16_t buffer_index = (y_pix + row) * (SCREEN_WIDTH / 8) + (x_pix / 8) + tile_index;
+              u8g2Buffer[buffer_index] = pixel_byte;
+          }
         }
         return 1;
     }

@@ -24,16 +24,13 @@ uint8_t u8g2Buffer[bufferSize];
 U8G2Bitmap u8g2Bitmap;
 
 U8G2Bitmap::U8G2Bitmap() {
-  u8g2_Setup_null(&this->u8g2, &u8g2_cb_r0, u8x8_byte_empty, &u8x8_dummy_cb);
+  u8g2_SetupDisplay(&this->u8g2,&my_display_cb,&my_cad_cb,u8x8_byte_empty,&u8x8_dummy_cb);
+  u8g2_SetupBuffer(&this->u8g2, u8g2Buffer, 1, u8g2_ll_hvline_vertical_top_lsb, &u8g2_cb_r0);
 
-  // Correct buffer setup
-  this->u8g2.tile_buf_ptr = u8g2Buffer;
-  this->u8g2.tile_buf_height = 1;  // Single page buffer
 
-  
-
-  this->u8g2.u8x8.display_cb = &my_display_cb;
-  this->u8g2.u8x8.cad_cb = &my_cad_cb;
+  //this->u8g2.u8x8.next_cb = &u8x8_utf8_next; // Use UTF-8 decoding for print
+  //this->u8g2.u8x8.display_cb = &my_display_cb;
+  //this->u8g2.u8x8.cad_cb = &my_cad_cb;
   
   // Initialize display
   u8g2_InitDisplay(&this->u8g2);
