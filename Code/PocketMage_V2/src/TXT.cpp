@@ -6,8 +6,16 @@
 //       888        d8'  `888b        888       //
 //      o888o     o888o  o88888o     o888o      //
 #include "globals.h"
-int direction = -1;
-int prevdir = -1;
+
+
+void TXT_INIT() {
+  if (editingFile != "") loadFile();
+  CurrentAppState = TXT;
+  CurrentKBState  = NORMAL;
+  dynamicScroll = 0;
+  newLineAdded = true;
+}
+
 // OLD MAINS
 void processKB_TXT() {
   if (OLEDPowerSave) {
@@ -1248,8 +1256,6 @@ void updateScrollFromTouch() {
   else if (lastTouch != -1 && (currentTime - lastTouchTime > TOUCH_TIMEOUT_MS)) {
     // RESET LASTTOUCH AFTER TIMEOUT
     lastTouch = -1;
-    direction = -1;
-    prevdir = -1;
     // ONLY UPDATE IF SCROLL HAS CHANGED
     if (prev_dynamicScroll != dynamicScroll) newLineAdded = true;
   }

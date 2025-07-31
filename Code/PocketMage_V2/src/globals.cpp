@@ -184,7 +184,7 @@ USBMSC msc;
         "ln", "log", "sqrt", "cbrt", "abs", "exp",
         "round", "min", "max", "pow", "rand",
         // fun
-        "dice"
+        "dice", "pick"
   };
   std::map<String, int> precedenceCalc = {
         {":", 0}, {"+", 1}, {"-", 1}, {"'", 2}, {"/", 2}, {"%", 2}, {"\"", 3}, {"!", 4}, {"~neg~",4}
@@ -261,6 +261,8 @@ USBMSC msc;
     " abs(a)\n",
     " rand(a,b) from min a -> b\n",
     " dice(a,b) a: num b:sides\n",
+    " pick(a,n) a: choices\n",
+    "           n: no. choices\n",
     "\n",
     "variables: \n",
     "\n",
