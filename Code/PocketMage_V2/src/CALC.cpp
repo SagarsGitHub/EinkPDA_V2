@@ -35,13 +35,13 @@ void CALC_INIT() {
   setTXTFont(&FreeMonoBold9pt7b);
   currentLine = "";
 }
-
 // KB HANDLER
 void processKB_CALC() {
   if (OLEDPowerSave) {
     u8g2.setPowerSave(0);
     OLEDPowerSave = false;
   }
+  disableTimeout = false;
   int currentMillis = millis();
   if (currentMillis - KBBounceMillis >= KB_COOLDOWN) {  
     char inchar = updateKeypress();
@@ -136,7 +136,7 @@ void processKB_CALC() {
           currentLine = "";
           oledWord("Clearing...");
           drawCalc();
-          einkCalcDynamic(true);
+          einkCalcDynamic(false,false);
           delay(300);
         }
         // Font Switcher (regular tab also starts the font switcher)
@@ -290,7 +290,7 @@ void einkHandler_CALC() {
         //help mode
         currentFont = &FreeMonoBold9pt7b;
         setTXTFont(currentFont);
-        // print out everything needed to understand basics of program, might be memory inefficient, remove or refactor
+        // print out everything needed to understand basics of program, might be memory inefficient, remove or rector
         allLinesCalc.clear();
         // potentially store helpText in SD card
         allLinesCalc.insert(allLinesCalc.end(), helpText.begin(), helpText.end());
@@ -337,7 +337,7 @@ void einkHandler_CALC() {
   }
 }
 
-///////////////////////////// SCROLL FUNCTIONS
+///////////////////////////// CALC SCROLL FUNCTIONS
 // could be abstracted to a processSB_Calc function with an interface set up for every app
 void updateScrollFromTouch_Calc() {
 
@@ -345,7 +345,7 @@ void updateScrollFromTouch_Calc() {
   uint16_t touched = cap.touched();  // Read touch state
   int newTouch = -1;
   // Find the first active touch point (lowest index first)
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 9; i++) {
     if (touched & (1 << i)) {
       newTouch = i;
       Serial.print("Prev pad: ");
@@ -386,6 +386,87 @@ void updateScrollFromTouch_Calc() {
     //Serial.println("update scroll has finished!");
 }
 
+///////////////////////////// CALC EINK FUNCTIONS
+// CLOSE CALC AND UPDATE
+void closeCalc(AppState newAppState){
+  // essential to display next app correctly 
+  display.setFullWindow();
+  display.fillScreen(GxEPD_WHITE);
+  u8g2.clearBuffer();
+  if (newAppState == TXT) {
+    TXT_INIT();
+  }  else {
+    CurrentAppState = HOME;
+    currentLine     = "";
+    newState        = true;
+    CurrentKBState  = NORMAL; 
+    disableTimeout = false;
+    refresh(); 
+  }
+}
+
+///////////////////////////// CALC OLED FUNCTIONS
+// calc specific oled
+void oledScrollCalc() {
+  // CLEAR DISPLAY
+  u8g2.clearBuffer();
+
+  // DRAW BACKGROUND
+  u8g2.drawXBMP(0, 0, 128, 32, scrolloled0);
+
+  // DRAW LINES PREVIEW
+  long int count = allLinesCalc.size();
+  long int startIndex = max((long int)(count - dynamicScroll), 0L);
+  long int endIndex = max((long int)(count - dynamicScroll - 9), 0L);
+
+  for (long int i = startIndex; i > endIndex && i >= 0; i--) {
+    if (i >= count) continue;  // Ensure i is within bounds
+
+    int16_t x1, y1;
+    uint16_t charWidth, charHeight;
+
+    // CHECK IF LINE STARTS WITH A TAB
+    if (allLinesCalc[i].startsWith("    ")) {
+      display.getTextBounds(allLinesCalc[i].substring(4), 0, 0, &x1, &y1, &charWidth, &charHeight);
+      int lineWidth = map(charWidth, 0, 320, 0, 49);
+
+      lineWidth = constrain(lineWidth, 0, 49);
+
+      // REMOVED TAB BOX DRAWING
+      //u8g2.drawBox(68, 28 - (4 * (startIndex - i)), lineWidth, 2);
+    }
+    else {
+      display.getTextBounds(allLinesCalc[i], 0, 0, &x1, &y1, &charWidth, &charHeight);
+      int lineWidth = map(charWidth, 0, 320, 0, 56);
+
+      lineWidth = constrain(lineWidth, 0, 56);
+
+      u8g2.drawBox(61, 28 - (4 * (startIndex - i)), lineWidth, 2);
+    }
+
+  }
+
+  // PRINT CURRENT LINE
+  u8g2.setFont(u8g2_font_ncenB08_tr);
+  String lineNumStr = String(startIndex) + "/" + String(count);
+  u8g2.drawStr(0,12,"Line:");
+  u8g2.drawStr(0,24,lineNumStr.c_str());
+
+  // PRINT LINE PREVIEW
+  if (startIndex >= 0 && startIndex < allLinesCalc.size()) {
+    String line = allLinesCalc[startIndex];
+    if (line.length() > 0) {
+      u8g2.setFont(u8g2_font_ncenB18_tr);
+      u8g2.drawStr(140, 24, line.c_str());
+    }
+  }
+
+  // SEND BUFFER 
+  u8g2.sendBuffer();
+}
+
+
+
 ///////////////////////////// ALGORITHMS
 // FORMAT INTO RPN,EVALUATE,SAVE
 int calculate(const String& cleanedInput,String &result){
@@ -397,14 +478,12 @@ int calculate(const String& cleanedInput,String &result){
   result = evaluateRPN(inputRPN);
   return 0;
 }
-
 // STRING INPUT TO RPN
 std::deque<String> convertToRPN(String expression) {
     std::deque<String> outputQueue;
     std::stack<String> operatorStack;
     std::vector<String> tokens = tokenize(expression);
     // Serial.println("Converting to RPN: " + expression);
-
     // Parenthesis validation
     int paren_balance = 0;
     for (char c : expression) {
@@ -433,10 +512,10 @@ std::deque<String> convertToRPN(String expression) {
         else if (isAlpha(token[0])) {
           if (i + 1 < tokens.size() && tokens[i+1] == ":") {
               // For assignment, push variable name marker to output
-              //Serial.println("pushed ~var~ + variable!");
+              Serial.println("pushed ~var~ + variable!");
               outputQueue.push_back("~var~" + token);
           } else {
-              //Serial.println("pushed variable!");
+              Serial.println("pushed variable!");
               outputQueue.push_back(token);
           }
         }
@@ -455,7 +534,7 @@ std::deque<String> convertToRPN(String expression) {
           }
         } 
         if ((token == "~neg~")) {
-          //Serial.println("pushed unary negation! RPN");
+          Serial.println("pushed unary negation! RPN");
           operatorStack.push(String(-1*variables[tokens[i+1]]));
           i++;
           continue;
@@ -497,14 +576,14 @@ std::vector<String> tokenize(const String& expression) {
     std::vector<String> tokens;
     String currentToken = "";
     // println("Tokenizing expression: " + expression);
+
     for (int i = 0; i < expression.length(); ++i) {
         char c = expression[i];
 
         // Handle assignment '='
         if (c == ':') {
             // Single '=' for assignment
-            Serial.println("encountered equals sign (:) in tokenizer: " + String(c));
-            tokens.push_back(":");  // Keep as & for assignment
+            tokens.push_back(":");  // Keep as : for assignment
             continue;
         }
         // messy
@@ -527,7 +606,6 @@ std::vector<String> tokenize(const String& expression) {
 
         // Handle numbers
         if (isDigit(c) || (c == '.' && i + 1 < expression.length() && isDigit(expression[i + 1]))) {
-            Serial.println("encountered number in tokenizer: " + String(c));
             currentToken += c;
             while (i + 1 < expression.length() &&
                    (isDigit(expression[i + 1]) || expression[i + 1] == '.')) {
@@ -540,7 +618,6 @@ std::vector<String> tokenize(const String& expression) {
 
         // Handle alphabetic tokens
         if (isAlpha(c)) {
-            Serial.println("encountered alphabetic expression in tokenizer: " + String(c));
             currentToken += c;
             while (i + 1 < expression.length() && isAlphaNumeric(expression[i + 1])) {
                 currentToken += expression[++i];
@@ -596,11 +673,12 @@ std::vector<String> tokenize(const String& expression) {
 String evaluateRPN(std::deque<String> rpnQueue) {
     std::stack<double> evalStack;
     std::stack<String> varStack;
+    // print queue
     /*
     for (auto it = rpnQueue.begin(); it != rpnQueue.end(); it++) {
       Serial.println("RPN Token: " + *it);
     }
-    */
+    */    
     while (!rpnQueue.empty()) {
         String token = rpnQueue.front();
         rpnQueue.pop_front();
@@ -1050,6 +1128,31 @@ String formatNumber(double value) {
     }
     return result;
 }
+// CALC DISPLAY ANSWER
+void printAnswer(String cleanExpression) {
+  int16_t x1, y1;
+  uint16_t exprWidth, resultWidth, charHeight;
+  String resultOutput = "";
+  int maxWidth = display.width() - 40;
+  int result = calculate(cleanExpression, resultOutput);
+  // Set font before measuring text
+  display.setFont(currentFont);
+  // Measure widths
+  display.getTextBounds(cleanExpression, 0, 0, &x1, &y1, &exprWidth, &charHeight);
+  display.getTextBounds(resultOutput, 0, 0, &x1, &y1, &resultWidth, &charHeight);
+  // Clip long expressions
+  if (exprWidth > maxWidth) {
+    int mid = cleanExpression.length() / 2;
+    allLinesCalc.push_back(cleanExpression.substring(0, mid));
+    allLinesCalc.push_back(cleanExpression.substring(mid));
+    newLineAdded = true;
+  } else {
+    allLinesCalc.push_back(cleanExpression);
+  }
+  // Right-align resultOutput in pixels
+  int resultX = display.width() - resultWidth - 60; 
+  allLinesCalc.push_back("~R~" + resultOutput); // right-align marker 
+}
 
 ///////////////////////////// HELPER FUNCTIONS
 // CONFRIM TOKEN IS A NUMBER
@@ -1131,3 +1234,5 @@ double convertTrig(double input,int trigType,bool reverse){
     break;
   }
 }
+
+

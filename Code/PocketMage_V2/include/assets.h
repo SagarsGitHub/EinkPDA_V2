@@ -145,4 +145,12 @@ extern const unsigned char _eventMarker1 [] PROGMEM;
 extern const unsigned char calcApp0 [] PROGMEM;
 extern const int calcAllArray_LEN;
 extern const unsigned char* calcAllArray[1];
+
+//
+extern const unsigned char _journal [] PROGMEM;
+
+
+
+
+
 #endif

@@ -289,24 +289,6 @@ void drawCalc(){
   
 }
 
-// CLOSE CALC AND UPDATE
-void closeCalc(AppState newAppState){
-  // essential to display next app correctly 
-  display.setFullWindow();
-  display.fillScreen(GxEPD_WHITE);
-  u8g2.clearBuffer();
-  if (newAppState == TXT) {
-    TXT_INIT();
-  }  else {
-    CurrentAppState = HOME;
-    currentLine     = "";
-    newState        = true;
-    CurrentKBState  = NORMAL; 
-    disableTimeout = false;
-    refresh(); 
-  }
-}
-
 // CALC EINK TEXT 
 // partial refresh that doesn't write over the calc app bitmap
 void einkCalcDynamic(bool doFull_, bool noRefresh) {
@@ -326,6 +308,7 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
     // Check if line needs wrapping
     int16_t x1, y1;
     uint16_t lineWidth, lineHeight;
+    // cut original marker to add it to cut partial text
     bool rightAlign = originalLine.startsWith("~R~");
     // clip right align marker
     String line = rightAlign ? originalLine.substring(3) : originalLine; 
@@ -423,30 +406,3 @@ void einkCalcDynamic(bool doFull_, bool noRefresh) {
     }
   }
 }
-
-// CALC DISPLAY ANSWER
-void printAnswer(String cleanExpression) {
-  int16_t x1, y1;
-  uint16_t exprWidth, resultWidth, charHeight;
-  String resultOutput = "";
-  int maxWidth = display.width() - 40;
-  int result = calculate(cleanExpression, resultOutput);
-  // Set font before measuring text
-  display.setFont(currentFont);
-  // Measure widths
-  display.getTextBounds(cleanExpression, 0, 0, &x1, &y1, &exprWidth, &charHeight);
-  display.getTextBounds(resultOutput, 0, 0, &x1, &y1, &resultWidth, &charHeight);
-  // Clip long expressions
-  if (exprWidth > maxWidth) {
-    int mid = cleanExpression.length() / 2;
-    allLinesCalc.push_back(cleanExpression.substring(0, mid));
-    allLinesCalc.push_back(cleanExpression.substring(mid));
-    newLineAdded = true;
-  } else {
-    allLinesCalc.push_back(cleanExpression);
-  }
-  // Right-align resultOutput in pixels
-  int resultX = display.width() - resultWidth - 60; 
-  allLinesCalc.push_back("~R~" + resultOutput); // right-align marker 
-}
-

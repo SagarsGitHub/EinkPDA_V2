@@ -150,15 +150,7 @@ USBMSC msc;
   String workingFile = "";
 
 
-  // Rohan's stuff
-    FileWizState VERY_IMPORTANT_THING = WIZ0_;
-  String workingFileYoYo = "";
-
   // <CALC.ino>
-  #define REFRESH_MAX_CALC 10
-  #define SCROLL_MAX 8
-  #define SCROLL_MED 4
-  #define SCROLL_SML 2
   CALCState CurrentCALCState = CALC0;
   int calcSwitchedStates = 0;
   int trigType = 1;
