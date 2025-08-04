@@ -89,8 +89,8 @@ USBMSC msc;
   volatile bool SDCARD_INSERT = false;
   bool noSD = false;
 
-  const String appStateNames[] = { "txt", "filewiz", "usb", "bt", "settings", "tasks", "calc" };
-  const unsigned char *appIcons[7] = { _homeIcons2, _homeIcons3, _homeIcons4, _homeIcons5, _homeIcons6, taskIconTasks0, _homeIcons10 };
+  const String appStateNames[] = { "txt", "filewiz", "usb", "bt", "settings", "tasks", "calc", "wifi" };
+  const unsigned char *appIcons[8] = { _homeIcons2, _homeIcons3, _homeIcons4, _homeIcons5, _homeIcons6, taskIconTasks0, _homeIcons10, _homeIcons11 };
   AppState CurrentAppState = HOME;
 
   // <TXT.ino>

@@ -109,6 +109,10 @@ void commandSelect(String command) {
     CALC_INIT();
   }
   /////////////////////////////
+  else if (command == "wifi" || command == "server" || command == "scipy" || command == WIFI_ID) {
+    WIFI_INIT();
+  }
+  /////////////////////////////
   else if (command == "i farted") {
     oledWord("That smells");
     delay(1000);

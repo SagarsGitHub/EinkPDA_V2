@@ -115,9 +115,9 @@ extern KBState CurrentKBState;
 extern uint8_t partialCounter;
 extern volatile bool forceSlowFullUpdate;
 
-enum AppState { HOME, TXT, FILEWIZ, USB_APP, BT, SETTINGS, TASKS, CALC };
+enum AppState { HOME, TXT, FILEWIZ, USB_APP, BT, SETTINGS, TASKS, CALC, WIFI };
 extern const String appStateNames[];
-extern const unsigned char *appIcons[7];
+extern const unsigned char *appIcons[8];
 extern AppState CurrentAppState;
 
 // <TXT.ino>
@@ -187,19 +187,21 @@ extern uint8_t editTaskState;
 extern String newTaskName;
 extern String newTaskDueDate;
 
-// <HOME.ino>
+// <HOME.cpp>
 enum HOMEState { HOME_HOME, NOWLATER };
 extern HOMEState CurrentHOMEState;
 
-// <FILEWIZ.ino>
+// <FILEWIZ.cpp>
 enum FileWizState { WIZ0_, WIZ1_, WIZ1_YN, WIZ2_R, WIZ2_C, WIZ3_ };
 extern FileWizState CurrentFileWizState;
 extern String workingFile;
 
+// <WIFI.cpp>
+#define WIFI_ID "42"
 
 
 // FUNCTION PROTOTYPES
-// <sysFunc.ino>
+// <sysFunc.cpp>
   // SYSTEM
   void checkTimeout();
   void PWR_BTN_irq();
@@ -312,5 +314,11 @@ void processKB_TASKS();
 // <PocketMage>
 void applicationEinkHandler();
 void processKB();
+
+
+// <WIFI.cpp>
+void processKB_WIFI();
+void einkHandler_WIFI();
+void WIFI_INIT();
 
 #endif // GLOBALS_H

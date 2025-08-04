@@ -37,6 +37,9 @@ void applicationEinkHandler() {
     case CALC:
       einkHandler_CALC();
       break;
+    case WIFI:
+      einkHandler_WIFI();
+      break;
     default:
       einkHandler_HOME();
       break;
@@ -68,6 +71,9 @@ void processKB() {
     // ADD APP CASES HERE
     case CALC:
       processKB_CALC();
+      break;
+    case WIFI:
+      processKB_WIFI();
       break;
     default:
       processKB_HOME();
