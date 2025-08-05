@@ -46,6 +46,15 @@ void processKB_CALC() {
   if (currentMillis - KBBounceMillis >= KB_COOLDOWN) {  
     char inchar = updateKeypress();
     switch (CurrentCALCState) {
+      // PROGRAMMING MODE (not implemented)
+      case CALC1:
+
+      // SCIENTIFIC MODE (not implemented)
+      case CALC2:
+
+      // CONVERSIONS MODE (not implemented)
+      case CALC3:
+
       // standard mode
       case CALC0:
         setTXTFont(currentFont);
@@ -162,15 +171,6 @@ void processKB_CALC() {
           else oledScrollCalc();
         }
         break;
-      // PROGRAMMING MODE (not implemented)
-      case CALC1:
-        break;
-      // SCIENTIFIC MODE (not implemented)
-      case CALC2:
-        break;
-      // CONVERSIONS MODE (not implemented)
-      case CALC3:
-        break;
       // HELP MODE (no need inputs)
       case CALC4:
         break;
@@ -282,6 +282,25 @@ void einkHandler_CALC() {
         break;
       case CALC2:
         //scientific mode
+        if (newState && doFull) { 
+          drawCalc();
+          einkCalcDynamic(true);
+          //refresh();
+          doFull = false;
+        } else if (newLineAdded && !newState) {
+          refresh_count++;
+          if (refresh_count > REFRESH_MAX_CALC){
+            drawCalc(); 
+            setFastFullRefresh(false);
+            einkCalcDynamic(true);
+            refresh_count = 0;
+          } else {
+            einkCalcDynamic(true);
+          }
+          setFastFullRefresh(true);
+        } else if (newState && !newLineAdded) {
+          drawCalc();
+        }
         break;
       case CALC3:
         //conversions 
@@ -483,7 +502,7 @@ std::deque<String> convertToRPN(String expression) {
     std::deque<String> outputQueue;
     std::stack<String> operatorStack;
     std::vector<String> tokens = tokenize(expression);
-    // Serial.println("Converting to RPN: " + expression);
+    Serial.println("Converting to RPN: " + expression);
     // Parenthesis validation
     int paren_balance = 0;
     for (char c : expression) {
@@ -575,11 +594,11 @@ std::deque<String> convertToRPN(String expression) {
 std::vector<String> tokenize(const String& expression) {
     std::vector<String> tokens;
     String currentToken = "";
-    // println("Tokenizing expression: " + expression);
+    Serial.println("Tokenizing expression: " + expression);
 
     for (int i = 0; i < expression.length(); ++i) {
         char c = expression[i];
-
+        char nextChar = (i + 1 < expression.length()) ? expression[i + 1] : '\0';      
         // Handle assignment '='
         if (c == ':') {
             // Single '=' for assignment
@@ -587,11 +606,11 @@ std::vector<String> tokenize(const String& expression) {
             continue;
         }
         // messy
-        if (c == '-' && (i == 0 || expression[i-1] == '(' || expression[i-1] == ',' || isOperatorToken(String(expression[i-1])) || expression[i-1] == ':' || (i + 1)< expression.length() && isAlpha(expression[i+1])))  {
+        if (c == '-' && (i == 0 || nextChar == '(' || nextChar == ',' || isOperatorToken(String(nextChar)) || nextChar == ':' || nextChar != '\0' && isAlpha(nextChar)))  {
           // If next char is digit, collect as negative number
-          if (i + 1 < expression.length() && isDigit(expression[i + 1])) {
+          if (i + 1 < expression.length() && isDigit(nextChar)) {
               currentToken += c;
-              while (i + 1 < expression.length() && (isDigit(expression[i + 1]) || expression[i + 1] == '.')) {
+              while (i + 1 < expression.length() && (isDigit(nextChar) || nextChar == '.')) {
                   currentToken += expression[++i];
               }
               tokens.push_back(currentToken);
@@ -605,10 +624,10 @@ std::vector<String> tokenize(const String& expression) {
         }
 
         // Handle numbers
-        if (isDigit(c) || (c == '.' && i + 1 < expression.length() && isDigit(expression[i + 1]))) {
+        if (isDigit(c) || (c == '.' && i + 1 < expression.length() && isDigit(nextChar))) {
             currentToken += c;
             while (i + 1 < expression.length() &&
-                   (isDigit(expression[i + 1]) || expression[i + 1] == '.')) {
+                   (isDigit(nextChar) || nextChar == '.')) {
                 currentToken += expression[++i];
             }
             tokens.push_back(currentToken);
@@ -619,8 +638,13 @@ std::vector<String> tokenize(const String& expression) {
         // Handle alphabetic tokens
         if (isAlpha(c)) {
             currentToken += c;
-            while (i + 1 < expression.length() && isAlphaNumeric(expression[i + 1])) {
-                currentToken += expression[++i];
+            while (i + 1 < expression.length()) {
+                nextChar = expression[i + 1];
+                if (isAlphaNumeric(nextChar)) {
+                    currentToken += expression[++i];
+                } else {
+                    break;  // Stop at anything like '('
+                }
             }
             tokens.push_back(currentToken);
             currentToken = "";
@@ -657,10 +681,7 @@ std::vector<String> tokenize(const String& expression) {
           tokens.push_back(String(c));
           continue;
       }
-      if (c == '!') {
-        tokens.push_back("!");
-        continue;
-      }
+
       // Unknown token,error
       oledWord("Error: malformed expression");
       delay(1000);
@@ -674,11 +695,11 @@ String evaluateRPN(std::deque<String> rpnQueue) {
     std::stack<double> evalStack;
     std::stack<String> varStack;
     // print queue
-    /*
+
     for (auto it = rpnQueue.begin(); it != rpnQueue.end(); it++) {
       Serial.println("RPN Token: " + *it);
     }
-    */    
+
     while (!rpnQueue.empty()) {
         String token = rpnQueue.front();
         rpnQueue.pop_front();
@@ -1045,16 +1066,29 @@ void calcCRInput(){
       dynamicScroll = 0;
       printAnswer(prevLine);
     } 
+    else if (currentLine == "/0"){
+        // standard mode
+        CurrentCALCState = CALC0;
+        drawCalc();
+    }  
     else if (currentLine == "/1"){
+        // programming mode
+        // CurrentCALCState = CALC1;
         oledWord("Programming Mode not implemented"); 
+        delay(1000);
     }
     else if (currentLine == "/2"){
-        oledWord("Scientific Mode not implemented"); 
+        // scientific mode
+        CurrentCALCState = CALC2;
+        drawCalc();
     }
     else if (currentLine == "/3"){
-        oledWord("Conversion Mode not implemented"); 
+        // conversion
+        CurrentCALCState = CALC3;
+          drawCalc();
     }
     else if (currentLine == "/4"){
+        // help mode
         CurrentCALCState = CALC4; 
     }
     else if (currentLine == "/5") {
@@ -1100,31 +1134,37 @@ void calcCRInput(){
 }
 // CONVERT NUMBER TO FLOAT STRING OR INT STRING
 String formatNumber(double value) {
+    Serial.println("foramting number " + String(value));
+    String result;
     // handle overflow, logic might change w/ scientific mode
-    if (value > INT_MAX) return "inf";
-    if (value < INT_MIN) return "-inf";
-    char buffer[32];
-    // handle integer test case
-    if (fabs(value - round(value)) < 1e-9) {
-      snprintf(buffer, sizeof(buffer), "%lld", static_cast<long long>(round(value)));
-      return String(buffer);
-    }
-    // print up to 8 decimals
-    snprintf(buffer, sizeof(buffer), "%.8f", value);
-    String result(buffer);
-    // trim excess zeros (implement different handling w/ scientific mode: variable for sig figs, and check calc state)
-    int dotPos = result.indexOf('.');
-    if (dotPos != -1) {
-        // start from end of string and move backwards to find last non-zero digit
-        int lastNonZero = result.length() - 1;
-        while (lastNonZero > dotPos && result[lastNonZero] == '0') {
-            lastNonZero--;
-        }
-        if (lastNonZero == dotPos) {
-          result.remove(dotPos+2); // Keep one digit after decimal point
-        } else {
-          result.remove(lastNonZero + 1);
-        }
+    if (CurrentCALCState == CALC2){
+        result = formatScientific(value);
+    } else {
+      if (value > INT_MAX) return "inf";
+      if (value < INT_MIN) return "-inf";
+      char buffer[32];
+      // handle integer test case
+      if (fabs(value - round(value)) < 1e-9) {
+        snprintf(buffer, sizeof(buffer), "%lld", static_cast<long long>(round(value)));
+        return String(buffer);
+      }
+      // print up to 8 decimals
+      snprintf(buffer, sizeof(buffer), "%.8f", value);
+      result = String(buffer);
+      // trim excess zeros (implement different handling w/ scientific mode: variable for sig figs, and check calc state)
+      int dotPos = result.indexOf('.');
+      if (dotPos != -1) {
+          // start from end of string and move backwards to find last non-zero digit
+          int lastNonZero = result.length() - 1;
+          while (lastNonZero > dotPos && result[lastNonZero] == '0') {
+              lastNonZero--;
+          }
+          if (lastNonZero == dotPos) {
+            result.remove(dotPos+2); // Keep one digit after decimal point
+          } else {
+            result.remove(lastNonZero + 1);
+          }
+      }
     }
     return result;
 }
@@ -1235,4 +1275,49 @@ double convertTrig(double input,int trigType,bool reverse){
   }
 }
 
+String formatScientific(double value) {
+    if (value == 0.0) return "0e0";
 
+    int exponent = 0;
+    double mantissa = value;
+
+    // Work with absolute value for normalization
+    bool negative = mantissa < 0;
+    if (negative) mantissa = -mantissa;
+
+    while (mantissa >= 10.0) {
+        mantissa /= 10.0;
+        exponent++;
+    }
+    while (mantissa < 1.0) {
+        mantissa *= 10.0;
+        exponent--;
+    }
+
+    if (negative) mantissa = -mantissa;
+
+    char buffer[32];
+    // Format mantissa with 6 decimals initially (enough precision to trim)
+    snprintf(buffer, sizeof(buffer), "%.6f", mantissa);
+
+    String result(buffer);
+
+    // Trim trailing zeros after decimal point
+    int dotPos = result.indexOf('.');
+    if (dotPos != -1) {
+        int lastNonZero = result.length() - 1;
+        while (lastNonZero > dotPos && result[lastNonZero] == '0') {
+            lastNonZero--;
+        }
+        if (lastNonZero == dotPos) {
+            // If all zeros removed, keep one digit after decimal
+            result.remove(dotPos + 2);
+        } else {
+            result.remove(lastNonZero + 1);
+        }
+    }
+
+    // Append exponent part
+    result += "e" + String(exponent);
+    return result;
+}

@@ -258,6 +258,7 @@ void drawCalc(){
         break;
       case CALC2:
         //scientific mode
+        Serial.println("printing Calc: Scientific!");
         display.print("Calc: Scientific");
         break;
       case CALC3:

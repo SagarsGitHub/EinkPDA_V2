@@ -289,7 +289,7 @@ bool isFunctionToken(const String& token);
 bool isOperatorToken(const String& token);
 bool isConstantToken(const String& token);
 double convertTrig(double input, int trigType,bool reverse = false);
-
+String formatScientific(double value);
 
 
 // <HOME.ino>
