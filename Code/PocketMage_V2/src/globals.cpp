@@ -263,3 +263,5 @@ USBMSC msc;
     "    ^^^ scroll up ^^^"
   };
 
+//WIFI.cpp
+WiFiServer server(PORT);  // TCP port 80

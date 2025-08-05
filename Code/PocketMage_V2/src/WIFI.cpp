@@ -9,7 +9,24 @@ void WIFI_INIT(){
 }
 
 void processKB_WIFI() {
-  
+  WiFiClient client = server.available();  // Wait for a client to connect
+  if (client) {
+    Serial.println("Client connected");
+    while (client.connected()) {
+      if (client.available()) {
+        String data = client.readStringUntil('\n');
+        Serial.print("Received: ");
+        Serial.println(data);
+        client.println("Echo: " + data);
+      }
+    }
+    client.stop();
+    Serial.println("Client disconnected");
+  } else {
+    oledWord("no client!");
+    delay(200);
+  }
+
   if (OLEDPowerSave) {
     u8g2.setPowerSave(0);
     OLEDPowerSave = false;

@@ -27,7 +27,7 @@
 #include "SPIFFS.h"
 #include <sys/stat.h>
 #include <iostream>
-
+#include <WiFi.h>
 #include "assets.h"
 #include "config.h"
 
@@ -198,7 +198,8 @@ extern String workingFile;
 
 // <WIFI.cpp>
 #define WIFI_ID "42"
-
+#define PORT 80
+extern WiFiServer server;
 
 // FUNCTION PROTOTYPES
 // <sysFunc.cpp>

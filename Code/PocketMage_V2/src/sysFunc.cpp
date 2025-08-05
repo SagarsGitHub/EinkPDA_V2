@@ -712,6 +712,7 @@ void checkTimeout() {
 }
 
 void deepSleep(bool alternateScreenSaver) {
+  disableTimeout = false;
   // Put OLED to sleep
   u8g2.setPowerSave(1);
   // flush keypad

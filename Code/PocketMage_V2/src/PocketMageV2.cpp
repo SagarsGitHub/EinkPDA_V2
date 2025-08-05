@@ -95,6 +95,7 @@ void setup() {
   Serial.begin(115200);
   Wire.begin(I2C_SDA, I2C_SCL);
   //SPI.begin(SPI_SCK, -1, SPI_MOSI, -1);
+  
 
   // OLED SETUP
   u8g2.begin();
@@ -108,6 +109,43 @@ void setup() {
 
   // STARTUP JINGLE
   //playJingle("startup");
+
+  
+  WiFi.mode(WIFI_AP);
+  const char* ssid = "yuh";
+  const char* password = "bluejade640";
+  oledWord("Connecting to WiFi...");
+  delay(100);
+
+  IPAddress local_ip(192, 168, 10, 1);
+  IPAddress gateway(192, 168, 10, 1);
+  IPAddress subnet(255, 255, 255, 0);
+
+  WiFi.softAPConfig(local_ip, gateway, subnet);
+
+  bool result = WiFi.softAP(ssid, NULL, 1, false, 8);
+
+  if (result) {
+    Serial.println("AP started");
+    Serial.print("IP address: ");
+    Serial.println(WiFi.softAPIP());
+  } else {
+    Serial.println("AP failed to start");
+  }
+
+
+  currentWord="";
+  oledWord("\nConnected. IP address: ");
+  Serial.println("Status: " + String(WiFi.status()));
+  delay(500);
+  oledWord(WiFi.softAPIP().toString());
+  delay(2000);
+  // Start server
+  server.begin();
+  oledWord("Server started, listening on port 80");
+  delay(1000);
+  
+  
 
   // LOAD PREFERENCES
   prefs.begin("settings", true); // Open in read-only mode
@@ -236,6 +274,9 @@ void setup() {
   // This would make any call to random use the esp hardware
   // randomSeed sets useRealRandomGenerator false, so this would need to replace randomSeed
   useRealRandomGenerator(true);
+
+
+
 
 
 }
