@@ -156,6 +156,7 @@ USBMSC msc;
   int trigType = 1;
   int refresh_count = 0;
   std::vector<String> allLinesCalc;
+  std::vector<String> prevTokens;
   String cleanExpression = "";
   String calculatedResult = "";
   String prevLine = "";
@@ -165,7 +166,7 @@ USBMSC msc;
          "inf", "-inf", "pi", "e", "ans"
   };
   std::set<String> operatorsCalc = {
-        "+", "-", "'", "/", "%", "=", "!", "\""
+        "+", "-", "'", "/", "E", "%", "=", "!", "\""
   };
   std::set<String> functionsCalc = {
         // trig
@@ -179,7 +180,7 @@ USBMSC msc;
         "dice", "pick"
   };
   std::map<String, int> precedenceCalc = {
-        {":", 0}, {"+", 1}, {"-", 1}, {"'", 2}, {"/", 2}, {"%", 2}, {"\"", 3}, {"!", 4}, {"~neg~",4}
+        {":", 0}, {"+", 1}, {"-", 1}, {"'", 2}, {"/", 2}, {"%", 2}, {"E", 3}, {"\"", 3}, {"!", 4}, {"~neg~",4}
     };
   std::vector<String>  helpText = {
     "\n",
@@ -203,7 +204,7 @@ USBMSC msc;
     " 1 : programming\n",
     "    (not implemented) \n",
     " 2 : scientific \n",
-    "    (not implemented) \n",
+    "\n",
     " 3 : conversions \n",
     "    (not implemented) \n",
     " 4 : help\n",
@@ -235,6 +236,7 @@ USBMSC msc;
     " !! repeat prev line\n",
     " ^ (type: \")\n",
     " = (type: :)\n",
+    " E (aEb, b = int)\n",
     "\n",
     "functions: \n",
     "\n",

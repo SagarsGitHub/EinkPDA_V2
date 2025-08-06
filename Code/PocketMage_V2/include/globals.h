@@ -175,7 +175,7 @@ extern std::map<String, int> precedenceCalc;
 extern std::vector<String> helpText;
 extern char bufferString[20];
 extern int trigType;
-
+extern std::vector<String> prevTokens;
 
 // <TASKS.ino>
 extern std::vector<std::vector<String>> tasks;

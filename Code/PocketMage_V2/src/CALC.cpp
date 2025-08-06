@@ -154,10 +154,12 @@ void processKB_CALC() {
           CurrentKBState = FUNC;
           newState = true;         
         }
-        // ADD NON-SPECIAL CHARACTERS TO CURRENTLINE
+        // add non-special characters to line
         else {
           currentLine += inchar;
-          // NO LOGIC TO SWITCH FN BACK TO NORMAL FOR EASE OF INPUT
+          // No to return FN for ease of input
+          // SHIFT will return to FUNC
+          if (CurrentKBState == SHIFT) CurrentKBState = FUNC;
         }
         currentMillis = millis();
         //Make sure oled only updates at 60fps
@@ -244,6 +246,7 @@ void processKB_CALC() {
           OLEDFPSMillis = currentMillis;
           oledLine(currentWord, false);
         }
+
         break;
     }
     KBBounceMillis = currentMillis;
@@ -528,7 +531,7 @@ std::deque<String> convertToRPN(String expression) {
               operatorStack.pop();
           }
         } 
-        else if (isAlpha(token[0])) {
+        else if (isAlpha(token[0]) && token != "E") {
           if (i + 1 < tokens.size() && tokens[i+1] == ":") {
               // For assignment, push variable name marker to output
               Serial.println("pushed ~var~ + variable!");
@@ -553,8 +556,11 @@ std::deque<String> convertToRPN(String expression) {
           }
         } 
         if ((token == "~neg~")) {
-          Serial.println("pushed unary negation! RPN");
-          operatorStack.push(String(-1*variables[tokens[i+1]]));
+
+          if ((i+1) < tokens.size()){
+            Serial.println("pushed unary negation! RPN");
+            operatorStack.push(String(-1*variables[tokens[i+1]]));
+          }
           i++;
           continue;
         }
@@ -594,99 +600,139 @@ std::deque<String> convertToRPN(String expression) {
 std::vector<String> tokenize(const String& expression) {
     std::vector<String> tokens;
     String currentToken = "";
+    bool usedRepeatFunction = false;
     Serial.println("Tokenizing expression: " + expression);
 
     for (int i = 0; i < expression.length(); ++i) {
-        char c = expression[i];
-        char nextChar = (i + 1 < expression.length()) ? expression[i + 1] : '\0';      
-        // Handle assignment '='
-        if (c == ':') {
-            // Single '=' for assignment
-            tokens.push_back(":");  // Keep as : for assignment
-            continue;
-        }
-        // messy
-        if (c == '-' && (i == 0 || nextChar == '(' || nextChar == ',' || isOperatorToken(String(nextChar)) || nextChar == ':' || nextChar != '\0' && isAlpha(nextChar)))  {
-          // If next char is digit, collect as negative number
-          if (i + 1 < expression.length() && isDigit(nextChar)) {
-              currentToken += c;
-              while (i + 1 < expression.length() && (isDigit(nextChar) || nextChar == '.')) {
-                  currentToken += expression[++i];
-              }
-              tokens.push_back(currentToken);
-              currentToken = "";
-              continue;
-          } else {
-              // Otherwise, treat as unary minus operator
-              tokens.push_back("~neg~");
-              continue;
-          }
-        }
+      char c = expression[i];
+      Serial.println("handling character: " + String(c));   
+      // Handle assignment '='
+      if (c == ':') {
+          // Single '=' for assignment
+          tokens.push_back(":");  // Keep as : for assignment
+          continue;
+      }
 
-        // Handle numbers
-        if (isDigit(c) || (c == '.' && i + 1 < expression.length() && isDigit(nextChar))) {
+      // messy
+      if (c == '-' && (
+          i == 0 ||                                   // Beginning of expression: "-5"
+          expression[i + 1] == '(' ||                 // Minus before parenthesis: "-(a+b)"
+          expression[i + 1] == ',' ||                 // Comma-separated: "-,5"
+          isOperatorToken(String(expression[i + 1])) || // Another operator follows: "-+"
+          expression[i + 1] == ':' ||                 // Assignment maybe?
+          ((i + 1) < expression.length()) && isAlpha(expression[i + 1]) ||// A variable or function follows: "-x"
+          isDigit(expression[i + 1])
+      ))  {
+        // If next char is digit, collect as negative number
+        if (i + 1 < expression.length() && isDigit(expression[i + 1])) {
+            Serial.println("pushed back negative number");
             currentToken += c;
-            while (i + 1 < expression.length() &&
-                   (isDigit(nextChar) || nextChar == '.')) {
+            while (i + 1 < expression.length() && (isDigit(expression[i + 1]) || expression[i + 1] == '.')) {
                 currentToken += expression[++i];
             }
             tokens.push_back(currentToken);
             currentToken = "";
             continue;
+        } else {
+            // Otherwise, treat as unary minus operator
+            Serial.println("pushed back unary minus operator");
+            tokens.push_back("~neg~");
+            continue;
         }
+      }
+      
+      // handle !! macro
+      if (!usedRepeatFunction && c == '!' && i + 1 < expression.length() && expression[i + 1] == '!') {
+          Serial.println("handling !! macro: " + String(c));
 
-        // Handle alphabetic tokens
-        if (isAlpha(c)) {
-            currentToken += c;
-            while (i + 1 < expression.length()) {
-                nextChar = expression[i + 1];
-                if (isAlphaNumeric(nextChar)) {
-                    currentToken += expression[++i];
-                } else {
-                    break;  // Stop at anything like '('
-                }
-            }
-            tokens.push_back(currentToken);
-            currentToken = "";
-            continue;
-        }
+          if (prevTokens.empty()) {
+              oledWord("Error: no previous expression");
+              delay(1000);
+              return {};
+          }
 
-        // Handle parentheses with implied multiplication
-        if (c == '(') {
-            if (!tokens.empty()) {
-                const String& prev = tokens.back();
-                bool insertMultiply = false;
-                // If the previous token is a number, constant, or closing parentheses
-                if (isNumberToken(prev) || prev == ")" || prev == "pi" || prev == "e" || prev == "ans") {
-                    insertMultiply = true;
-                }
-                // If it's an alphanumeric and not a known function, assume variable * (
-                if (isAlpha(prev[0]) && !isFunctionToken(prev)) {
-                    insertMultiply = true;
-                }
-                if (insertMultiply) {
-                    tokens.push_back("'");
-                }
-            }
-            tokens.push_back("(");
-            continue;
-        }
-        // Handle closing parens
-        if (c == ')') {
-            tokens.push_back(")");
-            continue;
-        }
-      // Handle operators and commas
-      if (isOperatorToken(String(c)) || c == ',') {
-          tokens.push_back(String(c));
+          usedRepeatFunction = true;
+
+          // Add in previous expression tokens
+          for (auto it = prevTokens.begin(); it != prevTokens.end(); ++it) {
+              Serial.println("pushing token: " + *it + " from previous expression");
+              tokens.push_back(*it);
+          }
+
+          i++; // Skip second '!'
           continue;
       }
+            
+      // Handle numbers
+      if (isDigit(c) || (c == '.' && i + 1 < expression.length() && isDigit(expression[i + 1]))) {
+          Serial.println("handling" + currentToken);
+          currentToken += c;
+          while (i + 1 < expression.length()) {
+              char peek = expression[i + 1];
+              if (isDigit(peek) || peek == '.') {
+                  currentToken += expression[++i];
+              } else {
+                  break;
+              }
+          }
+          Serial.println("Pushing number " + String(currentToken));
+          tokens.push_back(currentToken);
+          currentToken = "";
+          continue;
+      }
+
+      // Handle alphabetic tokens
+      if (isAlpha(c) && c != 'E') {
+          currentToken += c;
+          while (i + 1 < expression.length()) {
+              if (isAlphaNumeric(expression[i + 1])) {
+                  currentToken += expression[++i];
+              } else {
+                  break;  // Stop at anything like '('
+              }
+          }
+          tokens.push_back(currentToken);
+          currentToken = "";
+          continue;
+      }
+
+      // Handle parentheses with implied multiplication
+      if (c == '(') {
+          if (!tokens.empty()) {
+              const String& prev = tokens.back();
+              bool insertMultiply = false;
+              // If the previous token is a number, constant, or closing parentheses
+              if (isNumberToken(prev) || prev == ")" || prev == "pi" || prev == "e" || prev == "ans") {
+                  insertMultiply = true;
+              }
+              // If it's an alphanumeric and not a known function, assume variable * (
+              if (isAlpha(prev[0]) && !isFunctionToken(prev)) {
+                  insertMultiply = true;
+              }
+              if (insertMultiply) {
+                  tokens.push_back("'");
+              }
+          }
+          tokens.push_back("(");
+          continue;
+      }
+      // Handle closing parens
+      if (c == ')') {
+          tokens.push_back(")");
+          continue;
+      }
+    // Handle operators and commas
+    if (isOperatorToken(String(c)) || c == ',') {
+        tokens.push_back(String(c));
+        continue;
+    }
 
       // Unknown token,error
       oledWord("Error: malformed expression");
       delay(1000);
       return {}; 
     }
+    prevTokens = tokens;
     return tokens;
 }
 
@@ -727,7 +773,7 @@ String evaluateRPN(std::deque<String> rpnQueue) {
         } else if (token == "~neg~"){
             String varToNegate = rpnQueue.front(); rpnQueue.pop_front();
             rpnQueue.push_front(String(-1*variables[varToNegate]));
-        } else if (isAlpha(token[0]) && !isFunctionToken(token)) {
+        } else if (isAlpha(token[0]) && !isFunctionToken(token) && token != "E") {
           if (variables.find(token) != variables.end()) {
               evalStack.push(variables[token]);
           } else {
@@ -743,6 +789,7 @@ String evaluateRPN(std::deque<String> rpnQueue) {
             evalStack.push(a + b);
         }
         else if (token == "-") {
+            Serial.println("subtracting!");
             if (evalStack.size() < 2) return "Error with -";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
@@ -775,6 +822,22 @@ String evaluateRPN(std::deque<String> rpnQueue) {
             if (b == 0) return "Div by 0";
             evalStack.push(fmod(a, b));
         }
+        else if (token == "E") {
+            if (evalStack.size() < 2) return "Error with E";
+            double b = evalStack.top(); evalStack.pop();
+            double a = evalStack.top(); evalStack.pop();
+            if (abs(b) > 300) return "large exponent";
+            String temp = String(a, 8) + "e" + String(round(b));
+            
+            if (round(b) == 0){
+              evalStack.push(1.0);
+            } else {
+              Serial.println("Sending scientific notation: " + temp);
+              Serial.println("converted to double: " + String(atof(temp.c_str())));
+              evalStack.push(atof(temp.c_str()));
+            }
+
+        }
         else if (token == ":") {
           // Needs exactly 1 value and 1 variable
           if (evalStack.empty() || varStack.empty()) {
@@ -785,6 +848,8 @@ String evaluateRPN(std::deque<String> rpnQueue) {
           variables[varName] = value;
           evalStack.push(value);
         }
+
+
         // Handle unary operators
         else if (token == "!") {
             if (evalStack.empty()) return "Error with !";
@@ -847,7 +912,7 @@ String evaluateRPN(std::deque<String> rpnQueue) {
             if (evalStack.empty()) return "Error with acos";
             double a = evalStack.top(); evalStack.pop();
             if (a < -1 || a > 1) return "Error: domain of acos";
-            if (a == 0) a = PI/2; // to avoid precision errors
+            if (a == 0) a = PI/2;
             a = convertTrig(acos(a),trigType,true);
             evalStack.push(a);
         }
@@ -1134,7 +1199,7 @@ void calcCRInput(){
 }
 // CONVERT NUMBER TO FLOAT STRING OR INT STRING
 String formatNumber(double value) {
-    Serial.println("foramting number " + String(value));
+    Serial.println("formating number " + String(value));
     String result;
     // handle overflow, logic might change w/ scientific mode
     if (CurrentCALCState == CALC2){
@@ -1276,7 +1341,7 @@ double convertTrig(double input,int trigType,bool reverse){
 }
 
 String formatScientific(double value) {
-    if (value == 0.0) return "0e0";
+    if (abs(value) < 1e-14) return "0e0";
 
     int exponent = 0;
     double mantissa = value;
