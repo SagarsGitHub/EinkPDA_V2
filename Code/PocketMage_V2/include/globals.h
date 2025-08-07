@@ -282,6 +282,8 @@ String evaluateRPN(std::deque<String> rpnQueue);
 std::vector<String> tokenize(const String& expression);
 void calcCRInput();
 String formatNumber(double value);
+String formatScientific(double value);
+String trimValue(double value);
 void printAnswer(String resultOutput); 
 bool isNumberToken(const String& token);
 bool isVariableToken(const String& token);
@@ -289,7 +291,6 @@ bool isFunctionToken(const String& token);
 bool isOperatorToken(const String& token);
 bool isConstantToken(const String& token);
 double convertTrig(double input, int trigType,bool reverse = false);
-String formatScientific(double value);
 
 
 // <HOME.ino>

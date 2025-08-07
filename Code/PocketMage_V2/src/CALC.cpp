@@ -13,8 +13,7 @@
 // to-do 
 // create unified error handling system
 // make convertToRPN && evaluateRPN able to handle standard notation inputs from other apps
-// implement line substitution with !!, currently only previous answer substitution implemented
-// implement scientific notation (e notation + complex numbers + matrix multiplication)
+// implement  complex numbers + matrix multiplication
 // implement for loops and conditionals
 // programming mode
 
@@ -66,6 +65,18 @@ void processKB_CALC() {
         else if (inchar == 12) {
           if (currentLine.length() > 0) {
             currentLine.remove(currentLine.length() - 1);
+          }
+        }
+        else if (inchar == '.') {
+          currentLine += ".";
+          CurrentKBState = FUNC;
+        }
+        else if (inchar == ','){
+          if (currentLine.endsWith(",")){
+            Serial.println("Performed character replacement for ',,' ");
+            currentLine[currentLine.length()-1] = '.';
+          } else {
+            currentLine += ",";
           }
         }
         //TAB Recieved (This starts the font switcher now)
@@ -252,10 +263,8 @@ void processKB_CALC() {
     KBBounceMillis = currentMillis;
   }
 }
-
 // Eink handler
 void einkHandler_CALC() {
-  
   if (newLineAdded || newState) {
     switch (CurrentCALCState) {
       case CALC0:
@@ -362,12 +371,10 @@ void einkHandler_CALC() {
 ///////////////////////////// CALC SCROLL FUNCTIONS
 // could be abstracted to a processSB_Calc function with an interface set up for every app
 void updateScrollFromTouch_Calc() {
-
-
   uint16_t touched = cap.touched();  // Read touch state
   int newTouch = -1;
   // Find the first active touch point (lowest index first)
-  for (int i = 0; i < 9; i++) {
+  for (int i = 0; i < 3; i++) {
     if (touched & (1 << i)) {
       newTouch = i;
       Serial.print("Prev pad: ");
@@ -413,8 +420,10 @@ void updateScrollFromTouch_Calc() {
 void closeCalc(AppState newAppState){
   // essential to display next app correctly 
   display.setFullWindow();
+
   display.fillScreen(GxEPD_WHITE);
   u8g2.clearBuffer();
+  dynamicScroll = 0;
   if (newAppState == TXT) {
     TXT_INIT();
   }  else {
@@ -429,14 +438,18 @@ void closeCalc(AppState newAppState){
 
 ///////////////////////////// CALC OLED FUNCTIONS
 // calc specific oled
+// modified from oledScroll
+// modifications:
+//     removed tab drawing if line starts with "   " since all answers are right aligned
+//     all references to allLines -> allLinesCalc
 void oledScrollCalc() {
   // CLEAR DISPLAY
   u8g2.clearBuffer();
 
-  // DRAW BACKGROUND
+  // draw background
   u8g2.drawXBMP(0, 0, 128, 32, scrolloled0);
 
-  // DRAW LINES PREVIEW
+  // draw lines preview
   long int count = allLinesCalc.size();
   long int startIndex = max((long int)(count - dynamicScroll), 0L);
   long int endIndex = max((long int)(count - dynamicScroll - 9), 0L);
@@ -447,7 +460,7 @@ void oledScrollCalc() {
     int16_t x1, y1;
     uint16_t charWidth, charHeight;
 
-    // CHECK IF LINE STARTS WITH A TAB
+    // check if line starts with a tab
     if (allLinesCalc[i].startsWith("    ")) {
       display.getTextBounds(allLinesCalc[i].substring(4), 0, 0, &x1, &y1, &charWidth, &charHeight);
       int lineWidth = map(charWidth, 0, 320, 0, 49);
@@ -467,14 +480,12 @@ void oledScrollCalc() {
     }
 
   }
-
-  // PRINT CURRENT LINE
+  // print current line
   u8g2.setFont(u8g2_font_ncenB08_tr);
   String lineNumStr = String(startIndex) + "/" + String(count);
   u8g2.drawStr(0,12,"Line:");
   u8g2.drawStr(0,24,lineNumStr.c_str());
-
-  // PRINT LINE PREVIEW
+  // print line preview
   if (startIndex >= 0 && startIndex < allLinesCalc.size()) {
     String line = allLinesCalc[startIndex];
     if (line.length() > 0) {
@@ -482,20 +493,15 @@ void oledScrollCalc() {
       u8g2.drawStr(140, 24, line.c_str());
     }
   }
-
-  // SEND BUFFER 
+  // send buffer
   u8g2.sendBuffer();
 }
-
-
 
 ///////////////////////////// ALGORITHMS
 // FORMAT INTO RPN,EVALUATE,SAVE
 int calculate(const String& cleanedInput,String &result){
-
   // convert to reverse polish notation for easy calculation
   std::deque<String> inputRPN = convertToRPN(cleanedInput);
-  
   // calculate the RPN expression
   result = evaluateRPN(inputRPN);
   return 0;
@@ -505,13 +511,19 @@ std::deque<String> convertToRPN(String expression) {
     std::deque<String> outputQueue;
     std::stack<String> operatorStack;
     std::vector<String> tokens = tokenize(expression);
-    Serial.println("Converting to RPN: " + expression);
+    //Serial.println("Converting to RPN: " + expression);
     // Parenthesis validation
+    /*
+    for (auto it = tokens.begin(); it != tokens.end(); it++) {
+      Serial.println("RPN Token: " + *it);
+    }
+    */
     int paren_balance = 0;
     for (char c : expression) {
         if (c == '(') paren_balance++;
         else if (c == ')') paren_balance--;
     }
+
     if (paren_balance != 0) {
         return {}; 
     }
@@ -544,6 +556,7 @@ std::deque<String> convertToRPN(String expression) {
         else if (token == "(") {
             operatorStack.push(token);
         } 
+        // add all items in operator stack to output until first "(", remove "(", and push function to output
         else if (token == ")") {
           while (!operatorStack.empty() && operatorStack.top() != "(") {
               outputQueue.push_back(operatorStack.top());
@@ -556,14 +569,15 @@ std::deque<String> convertToRPN(String expression) {
           }
         } 
         if ((token == "~neg~")) {
-
           if ((i+1) < tokens.size()){
             Serial.println("pushed unary negation! RPN");
             operatorStack.push(String(-1*variables[tokens[i+1]]));
           }
+
           i++;
           continue;
         }
+        // sort operators by precedence, push all operators of greater precedence to the output queue and place new operator in operator stack
         else if (isOperatorToken(token)) {
           // Handle assignment '='
           if (token == ":") {
@@ -585,15 +599,14 @@ std::deque<String> convertToRPN(String expression) {
           operatorStack.push(token);
       }
     }
-
     // empty rest of operator stack
     while (!operatorStack.empty()) {
         outputQueue.push_back(operatorStack.top());
         operatorStack.pop();
     }
+
     return outputQueue;
 }
-
 // SPLIT STRING INTO TOKENS
 // can make tokenize add proper operators instead of replacement operators so that convertToRPN is able to handle standard notation inputs from other apps
 // i.e. ":" -> "=", "'" -> "*", "\"" -> "^"
@@ -601,35 +614,34 @@ std::vector<String> tokenize(const String& expression) {
     std::vector<String> tokens;
     String currentToken = "";
     bool usedRepeatFunction = false;
-    Serial.println("Tokenizing expression: " + expression);
-
+    //Serial.println("Tokenizing expression: " + expression);
     for (int i = 0; i < expression.length(); ++i) {
       char c = expression[i];
-      Serial.println("handling character: " + String(c));   
+      //Serial.println("handling character: " + String(c));   
       // Handle assignment '='
       if (c == ':') {
           // Single '=' for assignment
           tokens.push_back(":");  // Keep as : for assignment
           continue;
       }
-
-      // messy
+      // handle - and unary negation
       if (c == '-' && (
           i == 0 ||                                   // Beginning of expression: "-5"
           expression[i + 1] == '(' ||                 // Minus before parenthesis: "-(a+b)"
           expression[i + 1] == ',' ||                 // Comma-separated: "-,5"
           isOperatorToken(String(expression[i + 1])) || // Another operator follows: "-+"
-          expression[i + 1] == ':' ||                 // Assignment maybe?
-          ((i + 1) < expression.length()) && isAlpha(expression[i + 1]) ||// A variable or function follows: "-x"
+          expression[i + 1] == ':' ||                 // Assignment
+          (((i + 1) < expression.length()) && isAlpha(expression[i + 1])) || // A variable or function follows: "-x"
           isDigit(expression[i + 1])
       ))  {
-        // If next char is digit, collect as negative number
+        // If next char is digit collect as negative number
         if (i + 1 < expression.length() && isDigit(expression[i + 1])) {
-            Serial.println("pushed back negative number");
+            //Serial.println("pushed back negative number");
             currentToken += c;
             while (i + 1 < expression.length() && (isDigit(expression[i + 1]) || expression[i + 1] == '.')) {
                 currentToken += expression[++i];
             }
+
             tokens.push_back(currentToken);
             currentToken = "";
             continue;
@@ -640,11 +652,8 @@ std::vector<String> tokenize(const String& expression) {
             continue;
         }
       }
-      
       // handle !! macro
       if (!usedRepeatFunction && c == '!' && i + 1 < expression.length() && expression[i + 1] == '!') {
-          Serial.println("handling !! macro: " + String(c));
-
           if (prevTokens.empty()) {
               oledWord("Error: no previous expression");
               delay(1000);
@@ -652,14 +661,13 @@ std::vector<String> tokenize(const String& expression) {
           }
 
           usedRepeatFunction = true;
-
           // Add in previous expression tokens
           for (auto it = prevTokens.begin(); it != prevTokens.end(); ++it) {
               Serial.println("pushing token: " + *it + " from previous expression");
               tokens.push_back(*it);
           }
 
-          i++; // Skip second '!'
+          i++;
           continue;
       }
             
@@ -675,6 +683,7 @@ std::vector<String> tokenize(const String& expression) {
                   break;
               }
           }
+
           Serial.println("Pushing number " + String(currentToken));
           tokens.push_back(currentToken);
           currentToken = "";
@@ -685,12 +694,13 @@ std::vector<String> tokenize(const String& expression) {
       if (isAlpha(c) && c != 'E') {
           currentToken += c;
           while (i + 1 < expression.length()) {
-              if (isAlphaNumeric(expression[i + 1])) {
+              if (isAlphaNumeric(expression[i + 1]) && expression[i + 1] != 'E') {
                   currentToken += expression[++i];
               } else {
                   break;  // Stop at anything like '('
               }
           }
+
           tokens.push_back(currentToken);
           currentToken = "";
           continue;
@@ -706,13 +716,14 @@ std::vector<String> tokenize(const String& expression) {
                   insertMultiply = true;
               }
               // If it's an alphanumeric and not a known function, assume variable * (
-              if (isAlpha(prev[0]) && !isFunctionToken(prev)) {
+              if (isAlpha(prev[0]) && !isFunctionToken(prev) && prev != "E") {
                   insertMultiply = true;
               }
               if (insertMultiply) {
                   tokens.push_back("'");
               }
           }
+
           tokens.push_back("(");
           continue;
       }
@@ -735,27 +746,28 @@ std::vector<String> tokenize(const String& expression) {
     prevTokens = tokens;
     return tokens;
 }
-
 // EVALUATE RPN
 String evaluateRPN(std::deque<String> rpnQueue) {
     std::stack<double> evalStack;
     std::stack<String> varStack;
     // print queue
-
+    //Serial.println("Handling evaluating RPN");
+    /*
     for (auto it = rpnQueue.begin(); it != rpnQueue.end(); it++) {
-      Serial.println("RPN Token: " + *it);
+      Serial.println("eval Token: " + *it);
     }
-
+    */
     while (!rpnQueue.empty()) {
         String token = rpnQueue.front();
         rpnQueue.pop_front();
+
+        //can declare these if else blocks as inline functions 
         // Handle assignment variable marker first
         if (token.startsWith("~var~")) {
           String varName = token.substring(5);
           varStack.push(varName);
           continue;
         }
-        // !! can declare these if else blocks as inline functions 
         else if (isNumberToken(token)) {
             evalStack.push(token.toDouble());
         }
@@ -777,64 +789,64 @@ String evaluateRPN(std::deque<String> rpnQueue) {
           if (variables.find(token) != variables.end()) {
               evalStack.push(variables[token]);
           } else {
+              oledWord("undefined variable");
+              delay(1000);
               return "Error: undefined variable '" + token + "'";
           }
         }
 
         // Handle binary operators
         else if (token == "+") {
-            if (evalStack.size() < 2) return "Error with +";
+            if (evalStack.size() < 2) return "Error: +";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(a + b);
         }
         else if (token == "-") {
             Serial.println("subtracting!");
-            if (evalStack.size() < 2) return "Error with -";
+            if (evalStack.size() < 2) return "Error: -";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(a - b);
         }
         else if (token == "'") {
-            if (evalStack.size() < 2) return "Error with *";
+            if (evalStack.size() < 2) return "Error: *";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(a * b);
         }
         else if (token == "/") {
-            if (evalStack.size() < 2) return "Error with /";
+            if (evalStack.size() < 2) return "Error: /";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
             if (b == 0) return "Div by 0";
             evalStack.push(a / b);
         }
         else if (token == "\"") {
-            if (evalStack.size() < 2) return "Error with ^";
+            if (evalStack.size() < 2) return "Error: ^";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(pow(a, b));
         }
         else if (token == "%") {
-            if (evalStack.size() < 2) return "Error with %";
+            if (evalStack.size() < 2) return "Error: %";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
             // Handle modulo with floating-point numbers using fmod
-            if (b == 0) return "Div by 0";
+            if (b == 0) return "Error: Div by 0 %";
             evalStack.push(fmod(a, b));
         }
         else if (token == "E") {
-            if (evalStack.size() < 2) return "Error with E";
+            if (evalStack.size() < 2) return "Error: E";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
-            if (abs(b) > 300) return "large exponent";
-            String temp = String(a, 8) + "e" + String(round(b));
+            if (abs(b) > 300) return "Error: large exponent";
+            String temp = String(a, 8) + "e" + String(b,8);
             
             if (round(b) == 0){
               evalStack.push(1.0);
             } else {
-              Serial.println("Sending scientific notation: " + temp);
-              Serial.println("converted to double: " + String(atof(temp.c_str())));
-              evalStack.push(atof(temp.c_str()));
+              evalStack.push(a * pow(10, b));
             }
 
         }
@@ -852,64 +864,64 @@ String evaluateRPN(std::deque<String> rpnQueue) {
 
         // Handle unary operators
         else if (token == "!") {
-            if (evalStack.empty()) return "Error with !";
+            if (evalStack.empty()) return "Error: !";
             double a = evalStack.top(); evalStack.pop();
-            if (a < 0) return "Error with ! input ";
+            if (a < 0) return "Error: ! input < 0 ";
             evalStack.push(tgamma(a + 1));
         }
         
         // Handle trig functions
         // Trig functions too numerous and messy, need to do something about repeat code 
         else if (token == "sin") {
-            if (evalStack.empty()) return "Error with sin";
+            if (evalStack.empty()) return "Error: sin";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
             evalStack.push(sin(a));
         }
         else if (token == "asin") {
-            if (evalStack.empty()) return "Error with asin";
+            if (evalStack.empty()) return "Error: asin";
             double a = evalStack.top(); evalStack.pop();
             if (a < -1 || a > 1) return "Error: domain of asin";
             a = convertTrig(asin(a),trigType,true);
             evalStack.push(a);
         }
         else if (token == "sinh") {
-            if (evalStack.empty()) return "Error with sinh";
+            if (evalStack.empty()) return "Error: sinh";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
             evalStack.push(sinh(a));
         }
         else if (token == "csc") {
-            if (evalStack.empty()) return "Error with csc";
+            if (evalStack.empty()) return "Error: csc";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
-            if (sin(a) == 0) return "Error: divide by zero csc";
+            if (sin(a) == 0) return "Error: Div by 0 csc";
             evalStack.push(1/sin(a));
         }
         else if (token == "acsc") {
-            if (evalStack.empty()) return "Error with acsc";
+            if (evalStack.empty()) return "Error: acsc";
             double a = evalStack.top(); evalStack.pop();
-            if (a==0) return "Error: divide by zero acsc";
+            if (a==0) return "Error: Div by 0 acsc";
             double inv = 1/a;
             if (inv < -1 || inv > 1) return "Error: domain of acsc";
             a = convertTrig(asin(inv),trigType,true);
             evalStack.push(a);
         }
         else if (token == "csch") {
-            if (evalStack.empty()) return "Error with csch";
+            if (evalStack.empty()) return "Error: csch";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
-            if (sinh(a) == 0) return "Error: divide by zero csch";
+            if (sinh(a) == 0) return "Error: Div by 0 csch";
             evalStack.push(1/sinh(a));
         }
         else if (token == "cos") {
-            if (evalStack.empty()) return "Error with cos";
+            if (evalStack.empty()) return "Error: cos";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
             evalStack.push(cos(a));
         }
         else if (token == "acos") {
-            if (evalStack.empty()) return "Error with acos";
+            if (evalStack.empty()) return "Error: acos";
             double a = evalStack.top(); evalStack.pop();
             if (a < -1 || a > 1) return "Error: domain of acos";
             if (a == 0) a = PI/2;
@@ -917,62 +929,62 @@ String evaluateRPN(std::deque<String> rpnQueue) {
             evalStack.push(a);
         }
         else if (token == "cosh") {
-            if (evalStack.empty()) return "Error with cosh";
+            if (evalStack.empty()) return "Error: cosh";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
             evalStack.push(cosh(a));
         }
         else if (token == "sec") {
-            if (evalStack.empty()) return "Error with sec";
+            if (evalStack.empty()) return "Error: sec";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
-            if (cos(a) == 0) return "Error: divide by zero sec";
+            if (cos(a) == 0) return "Error: Div by 0 sec";
             evalStack.push(1/cos(a));
         }
         // could add logic to handle a = +inf == PI/2
         else if (token == "asec") {
-            if (evalStack.empty()) return "Error with asec";
+            if (evalStack.empty()) return "Error: asec";
             double a = evalStack.top(); evalStack.pop();
-            if (a==0) return "Error: divide by zero acsc";
+            if (a==0) return "Error: Div by 0 acsc";
             double inv = 1/a;
             if (inv < -1 || inv > 1) return "Error: domain of acsc";
             a = convertTrig(acos(inv),trigType,true);
             evalStack.push(a);
         }
         else if (token == "sech") {
-            if (evalStack.empty()) return "Error with sech";
+            if (evalStack.empty()) return "Error: sech";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
-            if (cosh(a) == 0) return "Error: divide by zero sech";
+            if (cosh(a) == 0) return "Error: Div by 0 sech";
             evalStack.push(1/cosh(a));
         }
         else if (token == "tan") {
-            if (evalStack.empty()) return "Error with tan";
+            if (evalStack.empty()) return "Error: tan";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
             evalStack.push(tan(a));
         }
         else if (token == "atan") {
-            if (evalStack.empty()) return "Error with atan";
+            if (evalStack.empty()) return "Error: atan";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(atan(a),trigType,true);
             evalStack.push(a);
         }
         else if (token == "tanh") {
-            if (evalStack.empty()) return "Error with tanh";
+            if (evalStack.empty()) return "Error: tanh";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
             evalStack.push(tanh(a));
         }
         else if (token == "cot") {
-            if (evalStack.empty()) return "Error with cot";
+            if (evalStack.empty()) return "Error: cot";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
-            if (tan(a) == 0) return "Error: divide by zero cot";
+            if (tan(a) == 0) return "Error: Div by 0 cot";
             evalStack.push(1/tan(a));
         }
         else if (token == "acot") {
-            if (evalStack.empty()) return "Error with acot";
+            if (evalStack.empty()) return "Error: acot";
             double a = evalStack.top(); evalStack.pop();
             double result;
             if (a == 0) {
@@ -987,51 +999,51 @@ String evaluateRPN(std::deque<String> rpnQueue) {
             evalStack.push(convertTrig(a,trigType,true));
         }
         else if (token == "coth") {
-            if (evalStack.empty()) return "Error with coth";
+            if (evalStack.empty()) return "Error: coth";
             double a = evalStack.top(); evalStack.pop();
             a = convertTrig(a,trigType);
-            if (tanh(a) == 0) return "Error: divide by zero coth";
+            if (tanh(a) == 0) return "Error: Div by 0 coth";
             evalStack.push(1/tanh(a));
         }
 
         // handle single input functions
         else if (token == "sqrt") {
-            if (evalStack.empty()) return "Error with sqrt";
+            if (evalStack.empty()) return "Error: sqrt";
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(sqrt(a));
         }
         else if (token == "cbrt") {
-            if (evalStack.empty()) return "Error with cbrt";
+            if (evalStack.empty()) return "Error: cbrt";
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(cbrt(a));
         }
         else if (token == "exp") {
-            if (evalStack.empty()) return "Error with exp";
+            if (evalStack.empty()) return "Error: exp";
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(exp(a));
         }
         else if (token == "round") {
-            if (evalStack.empty()) return "Error with round";
+            if (evalStack.empty()) return "Error: round";
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(round(a));
         }
         else if (token == "ln") {
-            if (evalStack.empty()) return "Error with ln";
+            if (evalStack.empty()) return "Error: ln";
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(log(a));
         }
         else if (token == "floor") {
-            if (evalStack.empty()) return "Error with floor";
+            if (evalStack.empty()) return "Error: floor";
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(floor(a));
         }
         else if (token == "ceil") {
-            if (evalStack.empty()) return "Error with ceil";
+            if (evalStack.empty()) return "Error: ceil";
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(ceil(a));
         }
         else if (token == "abs") {
-            if (evalStack.empty()) return "Error with abs";
+            if (evalStack.empty()) return "Error: abs";
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(fabsf(a));
         }
@@ -1039,58 +1051,58 @@ String evaluateRPN(std::deque<String> rpnQueue) {
         // handle multiple input functions
         // log(a,b) = log(a)/log(b) base b log of a
         else if (token == "log") {
-            if (evalStack.size() < 2) return "Error with log";
+            if (evalStack.size() < 2) return "Error: log";
             double a = evalStack.top(); evalStack.pop();
             // base of log, order changed for a more natural input
             double b = evalStack.top(); evalStack.pop();
             evalStack.push(log(a)/log(b));
         }
         else if (token == "max") {
-            if (evalStack.size() < 2) return "Error with max";
+            if (evalStack.size() < 2) return "Error: max";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(max(a, b));
         }
         else if (token == "min") {
-            if (evalStack.size() < 2) return "Error with min";
+            if (evalStack.size() < 2) return "Error: min";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(min(a, b));
         }
         else if (token == "pow") {
-            if (evalStack.size() < 2) return "Error with pow";
+            if (evalStack.size() < 2) return "Error: pow";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(pow(a, b));
         }
         else if (token == "rand") {
-            if (evalStack.size() < 2) return "Error with rand";
+            if (evalStack.size() < 2) return "Error: rand";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
             evalStack.push(random(a, b));
         }
         else if (token == "dice") {
-            if (evalStack.size() < 2) return "Error with dice";
+            if (evalStack.size() < 2) return "Error: dice";
             int b = int(evalStack.top()); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
-            if (b < 2) return "error too few dice sides";
+            if (b < 2) return "error: dice sides";
             int roll = 0;
+
             for (int i = 0; i < a; i++){           
               roll+= (esp_random() % b) + 1;
-              Serial.println("current roll: " + String(roll));
+              //Serial.println("current roll: " + String(roll));
             }
             evalStack.push(roll);
         }
         else if (token == "pick"){
-            if (evalStack.size() < 1) return "Error with pick no n arg";
+            if (evalStack.size() < 1) return "Error: pick no n arg";
             int a = static_cast<int>(evalStack.top()); evalStack.pop();
             int choices = a;
-
-            if (evalStack.size() < choices) return "Error with pick not enough choices";
+            if (evalStack.size() < choices) return "Error: pick not enough choices";
             int pickedValue = random(1, choices+1);
             double valueToPush = 0;
+
             for (int i = 0; i < choices; i++){
-              Serial.println("picking from choice: " + String(i));
               double poppedValue = evalStack.top(); evalStack.pop();
               if (i == (choices - pickedValue)) {
                 valueToPush = poppedValue;
@@ -1099,15 +1111,20 @@ String evaluateRPN(std::deque<String> rpnQueue) {
             evalStack.push(valueToPush);
         }
         else {
-            return "Unknown token: " + token;
+            return "Error: Unknown token: " + token;
         }
     }
-    if (evalStack.size() != 1) return "Error evaluating RPN: stack empty";
+    if (evalStack.size() != 1) {
+      oledWord("malformed expression");
+      delay(1000);
+      return "Error: malformed expression";
+    }
     if (varStack.size() != 0){
       String varName = varStack.top(); varStack.pop();
       double value = evalStack.top();
       variables[varName] = value;
     }
+
     variables["ans"] = evalStack.top();
     return formatNumber(evalStack.top());
 }
@@ -1199,39 +1216,74 @@ void calcCRInput(){
 }
 // CONVERT NUMBER TO FLOAT STRING OR INT STRING
 String formatNumber(double value) {
-    Serial.println("formating number " + String(value));
+    //Serial.println("formating number " + String(value));
     String result;
-    // handle overflow, logic might change w/ scientific mode
+    char buffer[32];
+
     if (CurrentCALCState == CALC2){
-        result = formatScientific(value);
+      return formatScientific(value);
     } else {
+      // handle overflow
       if (value > INT_MAX) return "inf";
       if (value < INT_MIN) return "-inf";
-      char buffer[32];
       // handle integer test case
       if (fabs(value - round(value)) < 1e-9) {
         snprintf(buffer, sizeof(buffer), "%lld", static_cast<long long>(round(value)));
         return String(buffer);
       }
-      // print up to 8 decimals
-      snprintf(buffer, sizeof(buffer), "%.8f", value);
-      result = String(buffer);
-      // trim excess zeros (implement different handling w/ scientific mode: variable for sig figs, and check calc state)
-      int dotPos = result.indexOf('.');
-      if (dotPos != -1) {
-          // start from end of string and move backwards to find last non-zero digit
-          int lastNonZero = result.length() - 1;
-          while (lastNonZero > dotPos && result[lastNonZero] == '0') {
-              lastNonZero--;
-          }
-          if (lastNonZero == dotPos) {
-            result.remove(dotPos+2); // Keep one digit after decimal point
-          } else {
-            result.remove(lastNonZero + 1);
-          }
-      }
+      result = trimValue(value);
     }
     return result;
+}
+// CONVERT DOUBLE TO SCIENTIFIC NOTATION
+String formatScientific(double value) {
+    // handle overflow and underflow edge cases
+    if (String(value) == "inf" || String(value) == "-inf") {
+      Serial.println("overflow error");
+      return String(value);
+    }
+    if (abs(value) < 1e-150) return "0e0";
+
+    int exponent = 0;
+    double mantissa = value;
+    bool negative = mantissa < 0;
+    String result;
+    // normalize
+    if (negative) mantissa = -mantissa;
+    while (mantissa >= 10.0) {
+        mantissa /= 10.0;
+        exponent++;
+    }
+    while (mantissa < 1.0) {
+        mantissa *= 10.0;
+        exponent--;
+    }
+    if (negative) mantissa = -mantissa;
+
+    result = trimValue(mantissa);
+    result += "e" + String(exponent);
+    return result;
+}
+// TRIM EXCESS ZEROS
+String trimValue(double value){
+    char buffer[32];
+    // Format mantissa with 10 decimals initially
+    snprintf(buffer, sizeof(buffer), "%.8f", value);
+    String valueStr(buffer);
+    int dotPos = valueStr.indexOf('.');
+
+    if (dotPos != -1) {
+        int lastNonZero = valueStr.length() - 1;
+        while (lastNonZero > dotPos && valueStr[lastNonZero] == '0') {
+            lastNonZero--;
+        }
+        if (lastNonZero == dotPos) {
+            valueStr.remove(dotPos + 2);
+        } else {
+            valueStr.remove(lastNonZero + 1);
+        }
+    }
+    return valueStr;
 }
 // CALC DISPLAY ANSWER
 void printAnswer(String cleanExpression) {
@@ -1265,7 +1317,6 @@ bool isNumberToken(const String& token) {
     if (token.isEmpty()) return false;
     
     size_t start = 0;
-
     // check value after unary negative operators
     if (token[0] == '-') {
         start = 1;
@@ -1302,7 +1353,7 @@ bool isVariableToken(const String& token) {
     if (isConstantToken(token)) return false;
     if (isFunctionToken(token)) return false;
 
-    // check if alphanumveric starting with alpha 
+    // check if alphanumeric starting with alpha 
     if (!isAlpha(token[0])) return false;
     for (size_t i = 1; i < token.length(); i++) {
         if (!isAlphaNumeric(token[i])) return false;
@@ -1338,51 +1389,4 @@ double convertTrig(double input,int trigType,bool reverse){
       return input;
     break;
   }
-}
-
-String formatScientific(double value) {
-    if (abs(value) < 1e-14) return "0e0";
-
-    int exponent = 0;
-    double mantissa = value;
-
-    // Work with absolute value for normalization
-    bool negative = mantissa < 0;
-    if (negative) mantissa = -mantissa;
-
-    while (mantissa >= 10.0) {
-        mantissa /= 10.0;
-        exponent++;
-    }
-    while (mantissa < 1.0) {
-        mantissa *= 10.0;
-        exponent--;
-    }
-
-    if (negative) mantissa = -mantissa;
-
-    char buffer[32];
-    // Format mantissa with 6 decimals initially (enough precision to trim)
-    snprintf(buffer, sizeof(buffer), "%.6f", mantissa);
-
-    String result(buffer);
-
-    // Trim trailing zeros after decimal point
-    int dotPos = result.indexOf('.');
-    if (dotPos != -1) {
-        int lastNonZero = result.length() - 1;
-        while (lastNonZero > dotPos && result[lastNonZero] == '0') {
-            lastNonZero--;
-        }
-        if (lastNonZero == dotPos) {
-            // If all zeros removed, keep one digit after decimal
-            result.remove(dotPos + 2);
-        } else {
-            result.remove(lastNonZero + 1);
-        }
-    }
-
-    // Append exponent part
-    result += "e" + String(exponent);
-    return result;
 }
