@@ -150,12 +150,16 @@ USBMSC msc;
   String workingFile = "";
 
 
-  // <CALC.ino>
+  // <CALC.cpp>
   CALCState CurrentCALCState = CALC0;
+  Frame *CurrentFrameState = &calcScreen;
   int calcSwitchedStates = 0;
   int trigType = 1;
   int refresh_count = 0;
   std::vector<String> allLinesCalc;
+  std::vector<String> allLinesConvA;
+  std::vector<String> allLinesConvB;
+  std::vector<String> allLinesConvC;
   std::vector<String> prevTokens;
   String cleanExpression = "";
   String calculatedResult = "";
@@ -267,4 +271,32 @@ USBMSC msc;
     "excluding constants \n",
     "    ^^^ scroll up ^^^"
   };
-
+  std::vector<String> testTextA = {
+    "this is a test text!\n",
+    "\n",
+    "how will this be wrapped by my universal frame function?"
+  };
+  std::vector<String> testTextB = {
+    "\n",
+    "      I\n",
+    "not like other texts\n",
+    "\n",
+    "    Am\n",
+    "U N I Q U E\n",
+    "I\n",
+    "\n",
+    "\n",
+    "\n",
+    "yea\n",
+    "not like other texts\n",
+    "  I\n",
+    " Am\n",
+    "    U N I Q U E\n",
+    "         Am,\n",
+    "I \n",
+    "I'm not like \n",
+    "other texts\n"
+  };
+Frame calcScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM,&allLinesCalc);
+Frame conversionFrameA(FRAME_LEFT,FRAME_RIGHT + 60,FRAME_TOP, FRAME_BOTTOM +60,&testTextA);
+Frame conversionFrameB(FRAME_LEFT + 60,FRAME_RIGHT,FRAME_TOP + 60, FRAME_BOTTOM,&testTextB);

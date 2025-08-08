@@ -24,7 +24,7 @@ void CALC_INIT() {
   CurrentAppState = CALC;
   CurrentCALCState = CALC0;
   CurrentKBState = FUNC;
-
+  CurrentFrameState = &calcScreen;
   dynamicScroll = 0;
   prev_dynamicScroll = -1;
   lastTouch = -1;
@@ -44,21 +44,89 @@ void processKB_CALC() {
   int currentMillis = millis();
   if (currentMillis - KBBounceMillis >= KB_COOLDOWN) {  
     char inchar = updateKeypress();
+
+    setTXTFont(currentFont);
+    // update scroll (calc specific function,could be abstracted to processSB_CALC())
+    updateScrollFromTouch_Calc();
+    
     switch (CurrentCALCState) {
+
+      // CONVERSIONS MODE 
+      case CALC3:
+        // HANDLE INPUTS
+        //No char recieved
+        if (inchar == 0);  
+                         
+        //SHIFT Recieved
+        else if (inchar == 17) {                                  
+          CurrentFrameState = &conversionFrameA;
+          CurrentFrameState->scroll = CurrentFrameState->lines->size();
+          dynamicScroll = CurrentFrameState->scroll;
+          CurrentFrameState->prevScroll = -1;
+          newLineAdded = true;
+        }
+        //FN Recieved
+        else if (inchar == 18) {                                  
+          CurrentFrameState = &conversionFrameB;
+          CurrentFrameState->scroll = CurrentFrameState->lines->size();
+          dynamicScroll = CurrentFrameState->scroll;
+          CurrentFrameState->prevScroll = -1;
+          newLineAdded = true;
+        }
+
+        // LEFT (scroll up)
+        else if (inchar == 19 || inchar == 5) {
+          if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_MAX)){
+             dynamicScroll += SCROLL_MAX;
+          } else if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_MED)){
+             dynamicScroll += SCROLL_MED;
+          } else if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_SML)){
+             dynamicScroll += SCROLL_SML;
+          } else if (dynamicScroll < CurrentFrameState->lines->size() - 10) {
+            dynamicScroll++;
+          }
+          newLineAdded = true; 
+          updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);                            
+        }
+        // RIGHT (scroll down)
+        else if (inchar == 21 || inchar == 6) { 
+
+          if (dynamicScroll > (SCROLL_MAX +1)){
+            dynamicScroll -= SCROLL_MAX;
+          }else if (dynamicScroll > (SCROLL_MED +1)){
+            dynamicScroll -= SCROLL_MED;
+          } else if (dynamicScroll > (SCROLL_SML +1)){
+            dynamicScroll -= SCROLL_SML;
+          } else if (dynamicScroll > 1){
+            dynamicScroll--;
+          } 
+          updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
+          newLineAdded = true;
+        }
+
+        currentMillis = millis();
+        //Make sure oled only updates at 60fps
+        if (currentMillis - OLEDFPSMillis >= 16) {
+          OLEDFPSMillis = currentMillis;
+          // ONLY SHOW OLEDLINE WHEN NOT IN SCROLL MODE
+          if (lastTouch == -1) {
+            oledLine(currentLine);
+            if (prev_dynamicScroll != dynamicScroll) prev_dynamicScroll = dynamicScroll;
+            updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
+          }
+          else oledScrollCalc();
+        }
+        break;
+
       // PROGRAMMING MODE (not implemented)
       case CALC1:
 
-      // SCIENTIFIC MODE (not implemented)
+      // SCIENTIFIC MODE 
       case CALC2:
 
-      // CONVERSIONS MODE (not implemented)
-      case CALC3:
 
       // standard mode
       case CALC0:
-        setTXTFont(currentFont);
-        // update scroll (calc specific function,could be abstracted to processSB_CALC())
-        updateScrollFromTouch_Calc();
         // HANDLE INPUTS
         //No char recieved
         if (inchar == 0);  
@@ -105,26 +173,27 @@ void processKB_CALC() {
         }
         //ESC / CLEAR Recieved
         else if (inchar == 20) {                                  
-          allLinesCalc.clear();
+          CurrentFrameState->lines->clear();
           currentLine = "";
           oledWord("Clearing...");
           drawCalc();
-          einkCalcDynamic(false,false);
+          einkTextFrameDynamic(calcScreen,false,false);
           display.refresh();
           delay(300);
         }
         // LEFT (scroll up)
         else if (inchar == 19 || inchar == 5) {
-          if (dynamicScroll < allLinesCalc.size() - (9 + SCROLL_MAX)){
+          if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_MAX)){
              dynamicScroll += SCROLL_MAX;
-          } else if (dynamicScroll < allLinesCalc.size() - (9 + SCROLL_MED)){
+          } else if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_MED)){
              dynamicScroll += SCROLL_MED;
-          } else if (dynamicScroll < allLinesCalc.size() - (9 + SCROLL_SML)){
+          } else if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_SML)){
              dynamicScroll += SCROLL_SML;
-          } else if (dynamicScroll < allLinesCalc.size() - 10) {
+          } else if (dynamicScroll < CurrentFrameState->lines->size() - 10) {
             dynamicScroll++;
           }
-          newLineAdded = true;                             
+          newLineAdded = true; 
+          updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);                            
         }
         // RIGHT (scroll down)
         else if (inchar == 21 || inchar == 6) { 
@@ -138,6 +207,7 @@ void processKB_CALC() {
           } else if (dynamicScroll > 1){
             dynamicScroll--;
           } 
+          updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
           newLineAdded = true;
         }
         //BKSP Recieved
@@ -152,11 +222,11 @@ void processKB_CALC() {
         else if (inchar == 5) {}
         //FILE Recieved 
         else if (inchar == 7) {
-          allLinesCalc.clear();
+          CurrentFrameState->lines->clear();
           currentLine = "";
           oledWord("Clearing...");
           drawCalc();
-          einkCalcDynamic(false,false);
+          einkTextFrameDynamic(*CurrentFrameState,false,false);
           delay(300);
         }
         // Font Switcher (regular tab also starts the font switcher)
@@ -180,6 +250,7 @@ void processKB_CALC() {
           if (lastTouch == -1) {
             oledLine(currentLine);
             if (prev_dynamicScroll != dynamicScroll) prev_dynamicScroll = dynamicScroll;
+            updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
           }
           else oledScrollCalc();
         }
@@ -199,7 +270,7 @@ void processKB_CALC() {
           editingFile = "";
           currentLine = "";
           drawCalc();
-          einkCalcDynamic(true);
+          einkTextFrameDynamic(calcScreen,true,false);
         }
         else if (inchar >= '0' && inchar <= '9') {
           int fontIndex = (inchar == '0') ? 10 : (inchar - '0');
@@ -242,14 +313,14 @@ void processKB_CALC() {
           currentWord = "";
           currentLine = "";
           //STORE ALLLINES IN TEMP BEFORE REFRESHING SCREEN TO AVOID DRAWING MULTIPLE FONTS
-          std::vector<String> tempLines = allLinesCalc;
-          allLinesCalc.clear();
+          std::vector<String> tempLines = *(CurrentFrameState->lines);
+          CurrentFrameState->lines->clear();
 
           // REFRESH SCREEN
           refresh();
           drawCalc();
-          allLinesCalc = tempLines;
-          einkCalcDynamic(true);
+          CurrentFrameState->lines = &tempLines;
+          einkTextFrameDynamic(calcScreen,true,false);
         }
         currentMillis = millis();
         //Make sure oled only updates at 60fps
@@ -271,7 +342,7 @@ void einkHandler_CALC() {
         //standard mode
         if (newState && doFull) { 
           drawCalc();
-          einkCalcDynamic(true);
+          einkTextFrameDynamic(calcScreen,true,false);
           //refresh();
           doFull = false;
         } else if (newLineAdded && !newState) {
@@ -279,10 +350,10 @@ void einkHandler_CALC() {
           if (refresh_count > REFRESH_MAX_CALC){
             drawCalc(); 
             setFastFullRefresh(false);
-            einkCalcDynamic(true);
+            einkTextFrameDynamic(calcScreen,true,false);
             refresh_count = 0;
           } else {
-            einkCalcDynamic(true);
+            einkTextFrameDynamic(calcScreen,true,false);
           }
           setFastFullRefresh(true);
         } else if (newState && !newLineAdded) {
@@ -296,7 +367,7 @@ void einkHandler_CALC() {
         //scientific mode
         if (newState && doFull) { 
           drawCalc();
-          einkCalcDynamic(true);
+          einkTextFrameDynamic(calcScreen,true,false);
           //refresh();
           doFull = false;
         } else if (newLineAdded && !newState) {
@@ -304,10 +375,10 @@ void einkHandler_CALC() {
           if (refresh_count > REFRESH_MAX_CALC){
             drawCalc(); 
             setFastFullRefresh(false);
-            einkCalcDynamic(true);
+            einkTextFrameDynamic(calcScreen,true,false);
             refresh_count = 0;
           } else {
-            einkCalcDynamic(true);
+            einkTextFrameDynamic(calcScreen,true,false);
           }
           setFastFullRefresh(true);
         } else if (newState && !newLineAdded) {
@@ -316,18 +387,39 @@ void einkHandler_CALC() {
         break;
       case CALC3:
         //conversions 
+        if (newState && doFull) { 
+          drawCalc();
+          einkTextFrameDynamic(calcScreen,true,false);
+          einkTextFrameDynamic(*CurrentFrameState,true,false,true);
+          //refresh();
+          doFull = false;
+        } else if (newLineAdded && !newState) {
+          refresh_count++;
+          if (refresh_count > REFRESH_MAX_CALC){
+            drawCalc(); 
+            setFastFullRefresh(false);
+            einkTextFrameDynamic(*CurrentFrameState,true,false,true);
+            refresh_count = 0;
+          } else {
+            einkTextFrameDynamic(*CurrentFrameState,true,false,true);
+          }
+          setFastFullRefresh(true);
+        } else if (newState && !newLineAdded) {
+          drawCalc();
+        }
         break;
       case CALC4:
         //help mode
         currentFont = &FreeMonoBold9pt7b;
         setTXTFont(currentFont);
         // print out everything needed to understand basics of program, might be memory inefficient, remove or rector
-        allLinesCalc.clear();
+        CurrentFrameState->lines->clear();
         // potentially store helpText in SD card
-        allLinesCalc.insert(allLinesCalc.end(), helpText.begin(), helpText.end());
-        dynamicScroll = (allLinesCalc.size() - 11);
+        CurrentFrameState->lines->insert(CurrentFrameState->lines->end(), helpText.begin(), helpText.end());
+        dynamicScroll = (CurrentFrameState->lines->size() - 11);
+        updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
         drawCalc(); 
-        einkCalcDynamic(true);
+        einkTextFrameDynamic(calcScreen,true,false);
         calcSwitchedStates = true;
         setFastFullRefresh(false);
         break;
@@ -335,7 +427,7 @@ void einkHandler_CALC() {
         display.firstPage();
         do {
           // false avoids full refresh
-          einkCalcDynamic(true, false);      
+          einkTextDynamic(true, false);      
           display.setPartialWindow(60, 0, 200, 218);
           drawStatusBar("Select a Font (0-9)");
           display.fillRect(60, 0, 200, 218, GxEPD_WHITE);
@@ -386,18 +478,20 @@ void updateScrollFromTouch_Calc() {
   }
 
   unsigned long currentTime = millis();
-
+  
   if (newTouch != -1) {  // If a touch is detected
     if (lastTouch != -1) {  // Compare with previous touch
       int touchDelta = abs(newTouch - lastTouch);
       if (touchDelta < 2) {  // Ignore large jumps (adjust threshold if needed)
-        int maxScroll = max(0, (int)allLinesCalc.size() - maxLines + 1);  // Ensure a valid scroll range
+        int maxScroll = max(0, (int)CurrentFrameState->lines->size() - CurrentFrameState->maxLines - 5);  // Ensure a valid scroll range
+        dynamicScroll = CurrentFrameState->scroll;
         if (newTouch > lastTouch) {
           dynamicScroll = min((int)(dynamicScroll + 1), maxScroll);
 
         } else if (newTouch < lastTouch) {
           dynamicScroll = max((int)(dynamicScroll - 1), 0);
         }
+        updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
       }
     }
     lastTouch = newTouch;  // Always update lastTouch
@@ -409,6 +503,7 @@ void updateScrollFromTouch_Calc() {
         if (prev_dynamicScroll != dynamicScroll) {
             newLineAdded = true;
             prev_dynamicScroll = dynamicScroll; // Update comparison value
+            updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
         }
     }
   }
@@ -424,6 +519,7 @@ void closeCalc(AppState newAppState){
   display.fillScreen(GxEPD_WHITE);
   u8g2.clearBuffer();
   dynamicScroll = 0;
+  updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
   if (newAppState == TXT) {
     TXT_INIT();
   }  else {
@@ -441,7 +537,6 @@ void closeCalc(AppState newAppState){
 // modified from oledScroll
 // modifications:
 //     removed tab drawing if line starts with "   " since all answers are right aligned
-//     all references to allLines -> allLinesCalc
 void oledScrollCalc() {
   // CLEAR DISPLAY
   u8g2.clearBuffer();
@@ -450,10 +545,13 @@ void oledScrollCalc() {
   u8g2.drawXBMP(0, 0, 128, 32, scrolloled0);
 
   // draw lines preview
-  long int count = allLinesCalc.size();
-  long int startIndex = max((long int)(count - dynamicScroll), 0L);
-  long int endIndex = max((long int)(count - dynamicScroll - 9), 0L);
-
+  long int count = CurrentFrameState->lines->size();
+  Serial.println("count = " + String(count));
+  Serial.println("scroll = " + String((long int)(count - CurrentFrameState->scroll)));
+  long int startIndex = std::max((long int)(count - CurrentFrameState->scroll), 0L);
+  Serial.println("startIndex = " + String(startIndex));
+  long int endIndex = std::max((long int)(count - CurrentFrameState->scroll - 9), 0L);
+  Serial.println("endIndex = " + String(endIndex));
   for (long int i = startIndex; i > endIndex && i >= 0; i--) {
     if (i >= count) continue;  // Ensure i is within bounds
 
@@ -461,8 +559,8 @@ void oledScrollCalc() {
     uint16_t charWidth, charHeight;
 
     // check if line starts with a tab
-    if (allLinesCalc[i].startsWith("    ")) {
-      display.getTextBounds(allLinesCalc[i].substring(4), 0, 0, &x1, &y1, &charWidth, &charHeight);
+    if ((*(CurrentFrameState->lines))[i].startsWith("    ")) {
+      display.getTextBounds((*(CurrentFrameState->lines))[i].substring(4), 0, 0, &x1, &y1, &charWidth, &charHeight);
       int lineWidth = map(charWidth, 0, 320, 0, 49);
 
       lineWidth = constrain(lineWidth, 0, 49);
@@ -471,7 +569,7 @@ void oledScrollCalc() {
       //u8g2.drawBox(68, 28 - (4 * (startIndex - i)), lineWidth, 2);
     }
     else {
-      display.getTextBounds(allLinesCalc[i], 0, 0, &x1, &y1, &charWidth, &charHeight);
+      display.getTextBounds((*(CurrentFrameState->lines))[i], 0, 0, &x1, &y1, &charWidth, &charHeight);
       int lineWidth = map(charWidth, 0, 320, 0, 56);
 
       lineWidth = constrain(lineWidth, 0, 56);
@@ -486,8 +584,8 @@ void oledScrollCalc() {
   u8g2.drawStr(0,12,"Line:");
   u8g2.drawStr(0,24,lineNumStr.c_str());
   // print line preview
-  if (startIndex >= 0 && startIndex < allLinesCalc.size()) {
-    String line = allLinesCalc[startIndex];
+  if (startIndex >= 0 && startIndex < CurrentFrameState->lines->size()) {
+    String line = (*(CurrentFrameState->lines))[startIndex];
     if (line.length() > 0) {
       u8g2.setFont(u8g2_font_ncenB18_tr);
       u8g2.drawStr(140, 24, line.c_str());
@@ -614,10 +712,10 @@ std::vector<String> tokenize(const String& expression) {
     std::vector<String> tokens;
     String currentToken = "";
     bool usedRepeatFunction = false;
-    //Serial.println("Tokenizing expression: " + expression);
+    Serial.println("Tokenizing expression: " + expression);
     for (int i = 0; i < expression.length(); ++i) {
       char c = expression[i];
-      //Serial.println("handling character: " + String(c));   
+      Serial.println("handling character: " + String(c));   
       // Handle assignment '='
       if (c == ':') {
           // Single '=' for assignment
@@ -625,32 +723,29 @@ std::vector<String> tokenize(const String& expression) {
           continue;
       }
       // handle - and unary negation
-      if (c == '-' && (
-          i == 0 ||                                   // Beginning of expression: "-5"
-          expression[i + 1] == '(' ||                 // Minus before parenthesis: "-(a+b)"
-          expression[i + 1] == ',' ||                 // Comma-separated: "-,5"
-          isOperatorToken(String(expression[i + 1])) || // Another operator follows: "-+"
-          expression[i + 1] == ':' ||                 // Assignment
-          (((i + 1) < expression.length()) && isAlpha(expression[i + 1])) || // A variable or function follows: "-x"
-          isDigit(expression[i + 1])
-      ))  {
-        // If next char is digit collect as negative number
-        if (i + 1 < expression.length() && isDigit(expression[i + 1])) {
-            //Serial.println("pushed back negative number");
-            currentToken += c;
-            while (i + 1 < expression.length() && (isDigit(expression[i + 1]) || expression[i + 1] == '.')) {
-                currentToken += expression[++i];
-            }
+      bool prevIsOperatorOrStart =
+          (i == 0) || 
+          isOperatorToken(String(expression[i - 1])) || 
+          expression[i - 1] == '(' || 
+          expression[i - 1] == ',' || 
+          expression[i - 1] == ':';
 
-            tokens.push_back(currentToken);
-            currentToken = "";
-            continue;
-        } else {
-            // Otherwise, treat as unary minus operator
-            Serial.println("pushed back unary minus operator");
-            tokens.push_back("~neg~");
-            continue;
-        }
+      if (c == '-' && prevIsOperatorOrStart) {
+          if (i + 1 < expression.length() && isDigit(expression[i + 1])) {
+              Serial.println("pushed back negative number");
+              currentToken += c;
+              while (i + 1 < expression.length() &&
+                    (isDigit(expression[i + 1]) || expression[i + 1] == '.')) {
+                  currentToken += expression[++i];
+              }
+              tokens.push_back(currentToken);
+              currentToken = "";
+              continue;
+          } else {
+              Serial.println("pushed back unary minus operator");
+              tokens.push_back("~neg~");
+              continue;
+          }
       }
       // handle !! macro
       if (!usedRepeatFunction && c == '!' && i + 1 < expression.length() && expression[i + 1] == '!') {
@@ -751,12 +846,12 @@ String evaluateRPN(std::deque<String> rpnQueue) {
     std::stack<double> evalStack;
     std::stack<String> varStack;
     // print queue
-    //Serial.println("Handling evaluating RPN");
-    /*
+    Serial.println("Handling evaluating RPN");
+    
     for (auto it = rpnQueue.begin(); it != rpnQueue.end(); it++) {
       Serial.println("eval Token: " + *it);
     }
-    */
+    
     while (!rpnQueue.empty()) {
         String token = rpnQueue.front();
         rpnQueue.pop_front();
@@ -1135,10 +1230,10 @@ void calcCRInput(){
   // reset eink screen if returning from a new mode
   if (calcSwitchedStates == 1){
     calcSwitchedStates = 0;
-    allLinesCalc.clear();
+    CurrentFrameState->lines->clear();
     doFull = 1;
     drawCalc();
-    einkCalcDynamic(true);
+    einkTextFrameDynamic(calcScreen,true,false);
   }
   // trim spaces
   currentLine.replace(" ", ""); 
@@ -1146,6 +1241,7 @@ void calcCRInput(){
   if (currentLine != ""){
     if (currentLine == "!!"){
       dynamicScroll = 0;
+      updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
       printAnswer(prevLine);
     } 
     else if (currentLine == "/0"){
@@ -1167,7 +1263,10 @@ void calcCRInput(){
     else if (currentLine == "/3"){
         // conversion
         CurrentCALCState = CALC3;
-          drawCalc();
+        CurrentFrameState = &conversionFrameA;
+        CurrentFrameState->scroll = 0;
+        CurrentFrameState->prevScroll = -1;
+        newLineAdded = true;
     }
     else if (currentLine == "/4"){
         // help mode
@@ -1176,7 +1275,7 @@ void calcCRInput(){
     else if (currentLine == "/5") {
         // write current file to text
         oledWord("Exporting Data to TXT!");
-        allLines = allLinesCalc;
+        allLines = *(CurrentFrameState->lines);
         // remvove '~R~' formatting (not used by txt app)
         for (int i = 0; i < allLines.size();i++){
           if (!(i%2 == 0)){
@@ -1206,6 +1305,7 @@ void calcCRInput(){
     else {
       // no command, calculate answer
       dynamicScroll = 0;
+      updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);
       prevLine = currentLine;
       printAnswer(currentLine);
     }
@@ -1300,15 +1400,15 @@ void printAnswer(String cleanExpression) {
   // Clip long expressions
   if (exprWidth > maxWidth) {
     int mid = cleanExpression.length() / 2;
-    allLinesCalc.push_back(cleanExpression.substring(0, mid));
-    allLinesCalc.push_back(cleanExpression.substring(mid));
+    CurrentFrameState->lines->push_back(cleanExpression.substring(0, mid));
+    CurrentFrameState->lines->push_back(cleanExpression.substring(mid));
     newLineAdded = true;
   } else {
-    allLinesCalc.push_back(cleanExpression);
+    CurrentFrameState->lines->push_back(cleanExpression);
   }
   // Right-align resultOutput in pixels
   int resultX = display.width() - resultWidth - 60; 
-  allLinesCalc.push_back("~R~" + resultOutput); // right-align marker 
+  CurrentFrameState->lines->push_back("~R~" + resultOutput); // right-align marker 
 }
 
 ///////////////////////////// HELPER FUNCTIONS
@@ -1389,4 +1489,17 @@ double convertTrig(double input,int trigType,bool reverse){
       return input;
     break;
   }
+}
+
+void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset){
+  int scroll, prev;
+  if (reset){
+    currentFrameState->scroll = currentFrameState->lines->size()  - 11;
+    currentFrameState->prevScroll = -1;
+
+  } else {
+    currentFrameState->scroll = currentScroll;
+    currentFrameState->prevScroll = prevScroll;
+  }
+  return;
 }

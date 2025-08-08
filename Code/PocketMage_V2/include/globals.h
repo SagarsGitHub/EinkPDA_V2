@@ -120,6 +120,7 @@ extern const String appStateNames[];
 extern const unsigned char *appIcons[7];
 extern AppState CurrentAppState;
 
+
 // <TXT.ino>
 extern String currentWord;
 extern String allText;
@@ -155,27 +156,55 @@ extern unsigned long lastTouchTime;
 
 // <CALC.cpp>
 enum CALCState { CALC0, CALC1, CALC2, CALC3, CALC4, CALCFONT };
+// define a frame with margins
+class Frame {
+  public: 
+  int left,right,top, bottom;
+  bool cursor = false;
+  std::vector<String>* lines = nullptr;
+  int scroll = 0;
+  int prevScroll = -1;
+  int maxLines = 0;
+
+  Frame(int left,int right,int top,int bottom, std::vector<String>* linesPtr = nullptr,bool cursor = false)
+    : left(left), right(right), top(top),bottom(bottom), lines(linesPtr), cursor(cursor) { }
+  
+};
 // max refreshes before a full refresh is forced (change to 5 for eink longevity)
 #define REFRESH_MAX_CALC 10
 #define SCROLL_MAX 8
 #define SCROLL_MED 4
 #define SCROLL_SML 2
+#define FRAME_TOP 32//const int reservedTop = 32;    // top for large calc frame
+#define FRAME_LEFT 10  //const int leftMargin = 8;    // left for large calc frame
+#define FRAME_RIGHT 10 //const int rightMargin = 20;   // right for large calc frame
+#define FRAME_BOTTOM 32                               // bottom for large calc frame
 extern CALCState CurrentCALCState;
 extern int refresh_count;
 extern std::vector<String> allLinesCalc;
+extern std::vector<String> allLinesConvA;
+extern std::vector<String> allLinesConvB;
+extern std::vector<String> allLinesConvC;
 extern String cleanExpression;
 extern String calculatedResult;
 extern int calcSwitchedStates;
 extern String prevLine;
 extern std::map<String, float> variables;
-extern  std::set<String> operatorsCalc;
-extern  std::set<String> functionsCalc;
+extern std::set<String> operatorsCalc;
+extern std::set<String> functionsCalc;
 extern std::set<String> constantsCalc;
 extern std::map<String, int> precedenceCalc;
 extern std::vector<String> helpText;
 extern char bufferString[20];
 extern int trigType;
 extern std::vector<String> prevTokens;
+extern std::vector<String> testTextA;
+extern std::vector<String> testTextB;
+extern Frame calcScreen;
+extern Frame conversionFrameA;
+extern Frame conversionFrameB;
+extern Frame conversionTypes;
+extern Frame *CurrentFrameState;
 
 // <TASKS.ino>
 extern std::vector<std::vector<String>> tasks;
@@ -252,7 +281,7 @@ void setTXTFont(const GFXfont *font);
 void setFastFullRefresh(bool setting);
 void drawStatusBar(String input);
 void drawCalc(); // Calc
-void einkCalcDynamic(bool doFull_, bool noRefresh = false);  // Calc
+void einkTextFrameDynamic(Frame &Frame,bool doFull_, bool noRefresh, bool drawBox = false);  // Calc
 
 // <FILEWIZ.ino>
 void processKB_FILEWIZ();
@@ -269,17 +298,14 @@ int countWords(String str);
 int countVisibleChars(String input);
 void updateScrollFromTouch();
 
-// <CALC.ino>
+// <CALC.cpp>
+
 void einkHandler_CALC();
 void processKB_CALC();
 void CALC_INIT();
 void closeCalc(AppState newAppState); // calc eink function
 void oledScrollCalc(); // calc oled function
 void updateScrollFromTouch_Calc(); // new processSB_Calc?
-int calculate(const String& cleanedInput,String &resultOutput);
-std::deque<String> convertToRPN(String expression);
-String evaluateRPN(std::deque<String> rpnQueue);
-std::vector<String> tokenize(const String& expression);
 void calcCRInput();
 String formatNumber(double value);
 String formatScientific(double value);
@@ -291,6 +317,11 @@ bool isFunctionToken(const String& token);
 bool isOperatorToken(const String& token);
 bool isConstantToken(const String& token);
 double convertTrig(double input, int trigType,bool reverse = false);
+int calculate(const String& cleanedInput,String &resultOutput);
+std::deque<String> convertToRPN(String expression);
+String evaluateRPN(std::deque<String> rpnQueue);
+std::vector<String> tokenize(const String& expression);
+void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset = false);
 
 
 // <HOME.ino>
