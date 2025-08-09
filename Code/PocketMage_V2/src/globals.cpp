@@ -272,31 +272,23 @@ USBMSC msc;
     "    ^^^ scroll up ^^^"
   };
   std::vector<String> testTextA = {
-    "this is a test text!\n",
-    "\n",
-    "how will this be wrapped by my universal frame function?"
+    "~C~meters\n",
+    "~C~feet\n",
+    "~C~mm\n",
+    "~C~in\n"
   };
   std::vector<String> testTextB = {
-    "\n",
-    "      I\n",
-    "not like other texts\n",
-    "\n",
-    "    Am\n",
-    "U N I Q U E\n",
-    "I\n",
-    "\n",
-    "\n",
-    "\n",
-    "yea\n",
-    "not like other texts\n",
-    "  I\n",
-    " Am\n",
-    "    U N I Q U E\n",
-    "         Am,\n",
-    "I \n",
-    "I'm not like \n",
-    "other texts\n"
+    "0\n",
+    "1\n",
+    "2\n",
+    "3\n",
+    "4\n",
+    "5\n",
+    "6\n",
+    "7\n",
+    "8\n",
+    "9\n"
   };
 Frame calcScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM,&allLinesCalc);
-Frame conversionFrameA(FRAME_LEFT,FRAME_RIGHT + 60,FRAME_TOP, FRAME_BOTTOM +60,&testTextA);
-Frame conversionFrameB(FRAME_LEFT + 60,FRAME_RIGHT,FRAME_TOP + 60, FRAME_BOTTOM,&testTextB);
+Frame conversionFrameA(FRAME_LEFT,FRAME_RIGHT + 176,FRAME_TOP + 8, FRAME_BOTTOM + 136,&testTextA);
+Frame conversionFrameB(FRAME_LEFT + 64,FRAME_RIGHT,FRAME_TOP + 64, FRAME_BOTTOM,&testTextB);

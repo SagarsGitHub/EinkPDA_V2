@@ -60,16 +60,14 @@ void processKB_CALC() {
         //SHIFT Recieved
         else if (inchar == 17) {                                  
           CurrentFrameState = &conversionFrameA;
-          CurrentFrameState->scroll = CurrentFrameState->lines->size();
-          dynamicScroll = CurrentFrameState->scroll;
+          CurrentFrameState->scroll = 0;
           CurrentFrameState->prevScroll = -1;
           newLineAdded = true;
         }
         //FN Recieved
         else if (inchar == 18) {                                  
           CurrentFrameState = &conversionFrameB;
-          CurrentFrameState->scroll = CurrentFrameState->lines->size();
-          dynamicScroll = CurrentFrameState->scroll;
+          CurrentFrameState->scroll = 0;
           CurrentFrameState->prevScroll = -1;
           newLineAdded = true;
         }
@@ -398,6 +396,7 @@ void einkHandler_CALC() {
           if (refresh_count > REFRESH_MAX_CALC){
             drawCalc(); 
             setFastFullRefresh(false);
+            einkTextFrameDynamic(calcScreen,true,false);
             einkTextFrameDynamic(*CurrentFrameState,true,false,true);
             refresh_count = 0;
           } else {
@@ -483,7 +482,7 @@ void updateScrollFromTouch_Calc() {
     if (lastTouch != -1) {  // Compare with previous touch
       int touchDelta = abs(newTouch - lastTouch);
       if (touchDelta < 2) {  // Ignore large jumps (adjust threshold if needed)
-        int maxScroll = max(0, (int)CurrentFrameState->lines->size() - CurrentFrameState->maxLines - 5);  // Ensure a valid scroll range
+        int maxScroll = max(0, (int)CurrentFrameState->lines->size() - CurrentFrameState->maxLines);  // Ensure a valid scroll range
         dynamicScroll = CurrentFrameState->scroll;
         if (newTouch > lastTouch) {
           dynamicScroll = min((int)(dynamicScroll + 1), maxScroll);
@@ -532,6 +531,108 @@ void closeCalc(AppState newAppState){
   }
 }
 
+std::vector<String> formatText(Frame &frame,int maxTextWidth){
+  std::vector<String> wrappedLines = {};
+   // for each line in all lines
+  for (const String& originalLine : (*frame.lines)) {
+    // empty line handling
+    if (originalLine.length() == 0) {
+      wrappedLines.push_back("");
+      continue;
+    }      
+
+    // Check if line needs wrapping
+    String currentLine = "";
+    String currentWord = "";
+    int16_t x1, y1;
+    uint16_t lineWidth, lineHeight;
+
+    // cut original marker to add it to cut partial text
+    bool rightAlign = originalLine.startsWith("~R~");
+    bool centerAlign = originalLine.startsWith("~C~");
+    // clip right align marker
+    String line = (rightAlign || centerAlign) ? originalLine.substring(3) : originalLine; 
+    display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
+
+    // simple line smaller than screen size
+    if (lineWidth <= maxTextWidth) {
+      wrappedLines.push_back(originalLine);
+      continue;
+    }
+    
+    // for each character in the line
+    for (int i = 0; i < line.length(); i++) {
+
+      char c = line[i];
+      // update running word
+      currentWord += c;
+
+      // Check word boundaries (space or end of string)
+      // if you have the end of the word/line
+      if (c == ' ' || i == line.length() - 1) {
+        // create a test line with the line + word
+        String testLine = currentLine + currentWord;
+        // check boundries
+        display.getTextBounds(testLine, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
+
+        // if the test linewidth overruns the frame, push the line we are building, adding right align if needed (consider adding center align check)
+        if (lineWidth > maxTextWidth) {
+          if (currentLine.length() > 0) {
+            if (rightAlign){
+              wrappedLines.push_back("~R~" + currentLine);
+            } else if (centerAlign){
+              wrappedLines.push_back("~C~" + currentLine);
+            } else {
+              wrappedLines.push_back(currentLine);
+            }
+            currentLine = "";
+          }
+
+          // Handle very long words 
+          while (currentWord.length() > 0) {
+            // set initial split position
+            int splitPos = 1;
+            String testFragment = "";
+            
+            // keep adding current word to test fragment until the fragment reaches the max text width
+            while (splitPos < currentWord.length()) {
+              testFragment += currentWord[splitPos];
+              display.getTextBounds(testFragment, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
+              if (lineWidth > maxTextWidth) break;
+              splitPos++;
+            }
+            // push split line onto wrapped lines, adding right align if needed
+            if (rightAlign){
+              wrappedLines.push_back("~R~" + currentWord.substring(0, splitPos));
+            } else if (centerAlign){
+              wrappedLines.push_back("~C~" + currentWord.substring(0, splitPos));
+            } else {
+              wrappedLines.push_back(currentWord.substring(0, splitPos));
+            }
+            currentWord = currentWord.substring(splitPos);
+          }
+        } else {
+          // line + word is less than or equal to the max text width
+          currentLine = testLine;
+        }
+        currentWord = "";
+      }
+    }
+    // puah line to wrapped lines
+    if (currentLine.length() > 0) {
+      if (rightAlign){
+        wrappedLines.push_back("~R~" + currentLine);
+      } else if (centerAlign){
+        wrappedLines.push_back("~C~" + currentLine);
+      } else {
+        wrappedLines.push_back(currentLine);
+      }
+    }
+  }
+
+  return wrappedLines;
+
+}
 ///////////////////////////// CALC OLED FUNCTIONS
 // calc specific oled
 // modified from oledScroll
@@ -546,51 +647,71 @@ void oledScrollCalc() {
 
   // draw lines preview
   long int count = CurrentFrameState->lines->size();
-  Serial.println("count = " + String(count));
-  Serial.println("scroll = " + String((long int)(count - CurrentFrameState->scroll)));
-  long int startIndex = std::max((long int)(count - CurrentFrameState->scroll), 0L);
-  Serial.println("startIndex = " + String(startIndex));
-  long int endIndex = std::max((long int)(count - CurrentFrameState->scroll - 9), 0L);
-  Serial.println("endIndex = " + String(endIndex));
-  for (long int i = startIndex; i > endIndex && i >= 0; i--) {
-    if (i >= count) continue;  // Ensure i is within bounds
+  long startIndex, endIndex;
+  getVisibleRange(CurrentFrameState, count, startIndex, endIndex);
+
+   // Decide how many preview lines to show
+  long previewLines = 9;
+  long previewTop = max(0L, endIndex - previewLines);
+  long previewBottom= endIndex - 1; // index of newest visible line (may be < 0)
+  const int rowStep = 4;    
+  const int baseY   = 28; 
+
+  for (long int i = previewBottom; i >= previewTop && i >= 0;  --i) {
+    if (i < 0 || i >= count) continue;  // Ensure i is within bounds
 
     int16_t x1, y1;
     uint16_t charWidth, charHeight;
+    String line = (*(CurrentFrameState->lines))[i];
 
-    // check if line starts with a tab
-    if ((*(CurrentFrameState->lines))[i].startsWith("    ")) {
-      display.getTextBounds((*(CurrentFrameState->lines))[i].substring(4), 0, 0, &x1, &y1, &charWidth, &charHeight);
+    // measure width (same as you did)
+    if (line.startsWith("    ")) {
+      display.getTextBounds(line.substring(4), 0, 0, &x1, &y1, &charWidth, &charHeight);
       int lineWidth = map(charWidth, 0, 320, 0, 49);
-
       lineWidth = constrain(lineWidth, 0, 49);
 
-      // REMOVED TAB BOX DRAWING
-      //u8g2.drawBox(68, 28 - (4 * (startIndex - i)), lineWidth, 2);
-    }
-    else {
-      display.getTextBounds((*(CurrentFrameState->lines))[i], 0, 0, &x1, &y1, &charWidth, &charHeight);
+      // compute Y based on distance from newest visible line
+      long posFromBottom = previewBottom - i; // 0 = newest
+      int boxY = baseY - (rowStep * posFromBottom);
+      if (boxY >= 0) {
+        // you removed the tab box drawing originally; uncomment if you want it:
+        // u8g2.drawBox(68, boxY, lineWidth, 2);
+      }
+    } else {
+      display.getTextBounds(line, 0, 0, &x1, &y1, &charWidth, &charHeight);
       int lineWidth = map(charWidth, 0, 320, 0, 56);
-
       lineWidth = constrain(lineWidth, 0, 56);
 
-      u8g2.drawBox(61, 28 - (4 * (startIndex - i)), lineWidth, 2);
+      long posFromBottom = previewBottom - i; // 0 = newest
+      int boxY = baseY - (rowStep * posFromBottom);
+      if (boxY >= 0) {
+        u8g2.drawBox(61, boxY, lineWidth, 2);
+      }
     }
-
   }
   // print current line
+  long displayedLinesStart = startIndex + 1;
+  long displayedLinesEnd   = endIndex; // endLine is one-past-last, so this already matches 1-based inclusive end
+  if (count == 0) {
+    displayedLinesStart = 0;
+    displayedLinesEnd  = 0;
+  }
   u8g2.setFont(u8g2_font_ncenB08_tr);
-  String lineNumStr = String(startIndex) + "/" + String(count);
-  u8g2.drawStr(0,12,"Line:");
-  u8g2.drawStr(0,24,lineNumStr.c_str());
-  // print line preview
-  if (startIndex >= 0 && startIndex < CurrentFrameState->lines->size()) {
-    String line = (*(CurrentFrameState->lines))[startIndex];
-    if (line.length() > 0) {
-      u8g2.setFont(u8g2_font_ncenB18_tr);
-      u8g2.drawStr(140, 24, line.c_str());
+  String lineNumStr = String(displayedLinesEnd ) + "/" + String(count);
+  u8g2.drawStr(0, 12, "Lines:");
+  u8g2.drawStr(0, 24, lineNumStr.c_str());
+
+  /*
+  // print preview of the newest visible line (bottom of visible window)
+  if (previewBottom >= 0 && previewBottom < count) {
+    String pLine = (*(CurrentFrameState->lines))[previewBottom];
+    if (pLine.length() > 0) {
+      u8g2.setFont(u8g2_font_ncenB10_tr);
+      // draw preview text on the right half of the OLED so it fits
+      u8g2.drawStr(64, 24, pLine.c_str());
     }
   }
+  */
   // send buffer
   u8g2.sendBuffer();
 }

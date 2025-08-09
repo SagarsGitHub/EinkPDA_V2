@@ -280,8 +280,10 @@ void einkTextDynamic(bool doFull_, bool noRefresh = false);
 void setTXTFont(const GFXfont *font);
 void setFastFullRefresh(bool setting);
 void drawStatusBar(String input);
+void getVisibleRange(const Frame *f, long totalLines, long &startLine, long &endLine); //Calc
 void drawCalc(); // Calc
 void einkTextFrameDynamic(Frame &Frame,bool doFull_, bool noRefresh, bool drawBox = false);  // Calc
+
 
 // <FILEWIZ.ino>
 void processKB_FILEWIZ();
@@ -304,6 +306,7 @@ void einkHandler_CALC();
 void processKB_CALC();
 void CALC_INIT();
 void closeCalc(AppState newAppState); // calc eink function
+std::vector<String> formatText(Frame &frame,int maxTextWidth); //eink function
 void oledScrollCalc(); // calc oled function
 void updateScrollFromTouch_Calc(); // new processSB_Calc?
 void calcCRInput();

@@ -294,108 +294,19 @@ void drawCalc(){
 // partial refresh that doesn't write over text outside of the defined frame
 void einkTextFrameDynamic(Frame &frame,bool doFull_, bool noRefresh, bool drawBox) {
   // calculate max text width
-  const int maxTextWidth = display.width() - frame.left - frame.right - 8;
+  const int maxTextWidth = display.width() - frame.left - frame.right;
   // set font
   setTXTFont(currentFont);
-  std::vector<String> wrappedLines;
-
-  // for each line in all lines
-  for (const String& originalLine : (*frame.lines)) {
-    // empty line handling
-    if (originalLine.length() == 0) {
-      wrappedLines.push_back("");
-      continue;
-    }      
-
-    // Check if line needs wrapping
-    String currentLine = "";
-    String currentWord = "";
-    int16_t x1, y1;
-    uint16_t lineWidth, lineHeight;
-
-    // cut original marker to add it to cut partial text
-    bool rightAlign = originalLine.startsWith("~R~");
-    // clip right align marker
-    String line = rightAlign ? originalLine.substring(3) : originalLine; 
-    display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-
-    // simple line smaller than screen size
-    if (lineWidth <= maxTextWidth) {
-      wrappedLines.push_back(originalLine);
-      continue;
-    }
-    
-    // for each character in the line
-    for (int i = 0; i < line.length(); i++) {
-
-      char c = line[i];
-      // update running word
-      currentWord += c;
-
-      // Check word boundaries (space or end of string)
-      // if you have the end of the word/line
-      if (c == ' ' || i == line.length() - 1) {
-        // create a test line with the line + word
-        String testLine = currentLine + currentWord;
-        // check boundries
-        display.getTextBounds(testLine, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-
-        // if the test linewidth overruns the frame, push the line we are building, adding right align if needed (consider adding center align check)
-        if (lineWidth > maxTextWidth) {
-          if (currentLine.length() > 0) {
-            wrappedLines.push_back(rightAlign ? "~R~" + currentLine : currentLine);
-            currentLine = "";
-          }
-
-          // Handle very long words 
-          while (currentWord.length() > 0) {
-            // set initial split position
-            int splitPos = 1;
-            String testFragment = "";
-            
-            // keep adding current word to test fragment until the fragment reaches the max text width
-            while (splitPos < currentWord.length()) {
-              testFragment += currentWord[splitPos];
-              display.getTextBounds(testFragment, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-              if (lineWidth > maxTextWidth) break;
-              splitPos++;
-            }
-            // push split line onto wrapped lines, adding right align if needed
-            wrappedLines.push_back(rightAlign ? "~R~" + currentWord.substring(0, splitPos) : currentWord.substring(0, splitPos));
-            currentWord = currentWord.substring(splitPos);
-          }
-        } else {
-          // line + word is less than or equal to the max text width
-          currentLine = testLine;
-        }
-        currentWord = "";
-      }
-    }
-    // puah line to wrapped lines
-    if (currentLine.length() > 0) {
-      wrappedLines.push_back(rightAlign ? "~R~" + currentLine : currentLine);
-    }
-  }
+  std::vector<String> wrappedLines = formatText(frame,maxTextWidth);
 
   // wrap lines
-  uint16_t size = wrappedLines.size();
+  long size = (long)wrappedLines.size();
   frame.maxLines = (display.height() - frame.top - frame.bottom) / (fontHeight + lineSpacing);
-  Serial.println("max lines = " + String(maxLines));
-  Serial.println("current size = " + String(size));
+  long startLine, endLine;
+  getVisibleRange(&frame, size, startLine, endLine);
   // determine the amount of lines to display
   uint16_t displayLines = constrain(maxLines + 2, 0, size);
-  Serial.println("current display lines = " + String(displayLines));
-  // set scroll offset + start and end + total height based on font
-  int scrollOffset = constrain(frame.scroll, 0, size - displayLines);
-  Serial.println("current scrollOffset = " + String(scrollOffset));
-  delay(100);
-  int startLine = size - displayLines - scrollOffset;
-  Serial.println("current startLine = " + String(startLine));
-  int endLine = size - scrollOffset;
-  int totalTextHeight = (fontHeight + lineSpacing) * displayLines;
-  // for current GxEPD2 screen rotation, h and y need to be divisible by 8
-  totalTextHeight -= totalTextHeight % 8;
-  
+
   if (doFull_) {
     // set  partial window size of frame
     // Snap frame top and height to multiples of 8 (rounding OUT)
@@ -415,6 +326,7 @@ void einkTextFrameDynamic(Frame &frame,bool doFull_, bool noRefresh, bool drawBo
       // fill frame
       display.fillRect(usableX, usableY, usableWidth, usableHeight, GxEPD_WHITE);
       
+      // draw box around frame
       if (drawBox){
         // Top border
         display.drawFastHLine(usableX, usableY, usableWidth, GxEPD_BLACK);
@@ -434,52 +346,102 @@ void einkTextFrameDynamic(Frame &frame,bool doFull_, bool noRefresh, bool drawBo
 
         // for current GxEPD2 screen rotation, h and y need to be divisible by 8
         int lineIndex = i - startLine;
-        int y = frame.top + (fontHeight + lineSpacing) * lineIndex;
+        int y = frame.top + (fontHeight + lineSpacing) * lineIndex + 8;
         String line = wrappedLines[i];
         bool rightAlign = line.startsWith("~R~");
+        bool centerAlign = line.startsWith("~C~");
         if (rightAlign) line.remove(0, 3);
+        if (centerAlign) line.remove(0, 3);
         int16_t x1, y1;
         uint16_t lineWidth, lineHeight;
         display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-        const int paddingFix = 15;
-        int xPos = rightAlign ? (display.width() - frame.right - lineWidth - paddingFix) : frame.left;
-        display.setCursor(xPos + 8, y + fontHeight + 8);
+        const int paddingFix = 16;
+        int xPos;
+
+        if (rightAlign){
+          xPos = display.width() - frame.right - lineWidth - paddingFix;
+        } else if (centerAlign){
+          int availableWidth = display.width() - frame.left - frame.right;
+          xPos = frame.left + (availableWidth / 2) - (lineWidth / 2) - paddingFix/2;
+        } else {
+          xPos = frame.left;
+        }
+        display.setCursor(xPos + 4, y + fontHeight);
         display.print(line);
       }
     } while (display.nextPage());
   } else {
-    // set line index to the start based on scroll
-    int i = startLine;
-            // Top border
+    // Calculate visible lines just like in full refresh
+    long size = (long)wrappedLines.size();
+    long startLine, endLine;
+    getVisibleRange(&frame, size, startLine, endLine);
 
-    if (i >= 0 && frame.lines->at(i).length() > 0) {
-      // for current GxEPD2 screen rotation, h and y need to be divisible by 8 
-      int h = fontHeight + lineSpacing;
-      h -= h % 8;
-      int y = frame.top;
-      y -= y % 8;
-      // set partial window to the size of the frame
-      display.setPartialWindow(frame.left, y, maxTextWidth, h);
-      display.firstPage();
-
-      do {
-        // fill with white and add all lines
-        display.fillRect(frame.left, y, maxTextWidth, h, GxEPD_WHITE);
-
-
-
-        String line = frame.lines->at(i);
-        bool rightAlign = line.startsWith("~R~");
-        if (rightAlign) line.remove(0, 3);  // Strip "~R~"
-        int16_t x1, y1;
-        uint16_t lineWidth, lineHeight;
-        display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-        // right justify logic, should add center justify logic as well
-        int xPos = rightAlign ? (display.width() - frame.right - lineWidth) : frame.left;
-        display.setCursor(xPos, y + fontHeight);
-        display.print(line);
-
-      } while (display.nextPage());
+    // Calculate height of all visible lines
+    int lineHeightTotal = (fontHeight + lineSpacing) * (endLine - startLine);
+    // Align y and height to multiples of 8 for GxEPD2
+    int yAligned = frame.top - (frame.top % 8);
+    int heightAligned = lineHeightTotal;
+    if (heightAligned % 8 != 0) {
+        heightAligned += (8 - (heightAligned % 8));
     }
+
+    // Set partial window for just the visible text area
+    display.setPartialWindow(frame.left, yAligned, maxTextWidth, heightAligned);
+    display.firstPage();
+    do {
+        // Clear the region
+        display.fillRect(frame.left, yAligned, display.width() - frame.left - frame.right, heightAligned, GxEPD_WHITE);
+
+        // Draw all visible lines
+        for (int i = startLine; i < endLine; i++) {
+          if (wrappedLines[i].length() == 0) continue;
+
+          int lineIndex = i - startLine;
+          int yRaw = frame.top + lineIndex * (fontHeight + lineSpacing) + 8;
+          int yAligned = yRaw - (yRaw % 8) + 16;
+
+          // Clear full width for this line's vertical band
+          display.fillRect(frame.left, yAligned, display.width() - frame.left - frame.right, fontHeight + lineSpacing, GxEPD_WHITE);
+
+          String line = wrappedLines[i];
+          bool rightAlign = line.startsWith("~R~");
+          bool centerAlign = line.startsWith("~C~");
+          if (rightAlign) line.remove(0, 3);
+          if (centerAlign) line.remove(0, 3);
+          int16_t x1, y1;
+          uint16_t lineWidth, lineHeight;
+          display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
+          const int paddingFix = 16;
+          int xPos;
+          if (rightAlign){
+            xPos = display.width() - frame.right - lineWidth - paddingFix;
+          } else if (centerAlign){
+            int availableWidth = display.width() - frame.left - frame.right;
+            xPos = frame.left + (availableWidth / 2) - (lineWidth / 2) - paddingFix/2;
+          } else {
+            xPos = frame.left;
+          }
+
+          display.setCursor(xPos + 4, yRaw + fontHeight);
+          Serial.println("cursor set to +" + String(xPos) + ", " + String(yRaw + fontHeight));
+          display.print(line);
+        }
+
+    } while (display.nextPage());
   }
+}
+
+// Computes start and end visible lines (top-origin) for a given frame
+void getVisibleRange(const Frame *f, long totalLines, long &startLine, long &endLine) {
+    if (totalLines <= 0) {
+        startLine = endLine = 0;
+        return;
+    }
+
+    long displayLines = constrain((long)f->maxLines, 0L, totalLines);
+    long scrollOffset = constrain((long)f->scroll, 0L, max(0L, totalLines - displayLines));
+
+    // terminal style: bottom is scroll=0
+    startLine = max(0L, totalLines - displayLines - scrollOffset);
+    endLine   = min(totalLines, startLine + displayLines);
 }
