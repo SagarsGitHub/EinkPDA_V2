@@ -162,8 +162,8 @@ class Frame {
   int left,right,top, bottom;
   bool cursor = false;
   std::vector<String>* lines = nullptr;
-  int scroll = 0;
-  int prevScroll = -1;
+  long scroll = 0;
+  long prevScroll = -1;
   int maxLines = 0;
 
   Frame(int left,int right,int top,int bottom, std::vector<String>* linesPtr = nullptr,bool cursor = false)
@@ -201,6 +201,8 @@ extern std::vector<String> prevTokens;
 extern std::vector<String> testTextA;
 extern std::vector<String> testTextB;
 extern Frame calcScreen;
+extern Frame conversionScreen;
+extern Frame conversionDirection;
 extern Frame conversionFrameA;
 extern Frame conversionFrameB;
 extern Frame conversionTypes;
@@ -225,7 +227,8 @@ enum FileWizState { WIZ0_, WIZ1_, WIZ1_YN, WIZ2_R, WIZ2_C, WIZ3_ };
 extern FileWizState CurrentFileWizState;
 extern String workingFile;
 
-
+// <frameFunc.cpp>
+# define X_OFFSET 4
 
 // FUNCTION PROTOTYPES
 // <sysFunc.ino>
@@ -282,8 +285,6 @@ void setFastFullRefresh(bool setting);
 void drawStatusBar(String input);
 void getVisibleRange(const Frame *f, long totalLines, long &startLine, long &endLine); //Calc
 void drawCalc(); // Calc
-void einkTextFrameDynamic(Frame &Frame,bool doFull_, bool noRefresh, bool drawBox = false);  // Calc
-
 
 // <FILEWIZ.ino>
 void processKB_FILEWIZ();
@@ -306,7 +307,6 @@ void einkHandler_CALC();
 void processKB_CALC();
 void CALC_INIT();
 void closeCalc(AppState newAppState); // calc eink function
-std::vector<String> formatText(Frame &frame,int maxTextWidth); //eink function
 void oledScrollCalc(); // calc oled function
 void updateScrollFromTouch_Calc(); // new processSB_Calc?
 void calcCRInput();
@@ -342,6 +342,15 @@ void deleteTask(int index);
 String convertDateFormat(String yyyymmdd);
 void einkHandler_TASKS();
 void processKB_TASKS();
+
+// <FRAMES.cpp>
+void einkTextFrameDynamic(Frame &Frame,bool doFull_, bool noRefresh, bool drawBox = false);  // Calc
+std::vector<String> formatText(Frame &frame,int maxTextWidth);
+void drawLineInFrame(const String &srcLine, int lineIndex, const Frame &frame, int usableY, bool clearLine, bool isPartial);
+void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight);
+int computeCursorX(const Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth);
+int alignUp8(int v);
+int alignDown8(int v);
 
 
 // <PocketMage>

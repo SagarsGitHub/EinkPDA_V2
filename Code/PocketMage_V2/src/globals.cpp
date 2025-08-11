@@ -278,17 +278,18 @@ USBMSC msc;
     "~C~in\n"
   };
   std::vector<String> testTextB = {
-    "0\n",
-    "1\n",
-    "2\n",
-    "3\n",
-    "4\n",
-    "5\n",
-    "6\n",
-    "7\n",
-    "8\n",
-    "9\n"
+    "~C~meters\n",
+    "~C~feet\n",
+    "~C~mm\n",
+    "~C~in\n"
   };
-Frame calcScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM,&allLinesCalc);
-Frame conversionFrameA(FRAME_LEFT,FRAME_RIGHT + 176,FRAME_TOP + 8, FRAME_BOTTOM + 136,&testTextA);
-Frame conversionFrameB(FRAME_LEFT + 64,FRAME_RIGHT,FRAME_TOP + 64, FRAME_BOTTOM,&testTextB);
+  std::vector<String> dirText = {
+    "~C~<-\n",
+    "~C~->\n"
+  };
+  
+  Frame calcScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM,&allLinesCalc);
+  Frame conversionScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 56, FRAME_BOTTOM,&allLinesCalc);
+  Frame conversionDirection(FRAME_LEFT + 128 ,FRAME_RIGHT + 128,FRAME_TOP + 8, FRAME_BOTTOM + 136,&dirText);
+  Frame conversionFrameA(FRAME_LEFT,FRAME_RIGHT + 176,FRAME_TOP + 8, FRAME_BOTTOM + 136,&testTextA);
+  Frame conversionFrameB(FRAME_LEFT + 176,FRAME_RIGHT,FRAME_TOP + 8, FRAME_BOTTOM + 136,&testTextB);
