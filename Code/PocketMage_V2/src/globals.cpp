@@ -287,9 +287,10 @@ USBMSC msc;
     "~C~<-\n",
     "~C~->\n"
   };
-  
+
   Frame calcScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM,&allLinesCalc);
   Frame conversionScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 56, FRAME_BOTTOM,&allLinesCalc);
   Frame conversionDirection(FRAME_LEFT + 128 ,FRAME_RIGHT + 128,FRAME_TOP + 8, FRAME_BOTTOM + 136,&dirText);
   Frame conversionFrameA(FRAME_LEFT,FRAME_RIGHT + 176,FRAME_TOP + 8, FRAME_BOTTOM + 136,&testTextA);
   Frame conversionFrameB(FRAME_LEFT + 176,FRAME_RIGHT,FRAME_TOP + 8, FRAME_BOTTOM + 136,&testTextB);
+  std::vector<Frame*> frames = {};

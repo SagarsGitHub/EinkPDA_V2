@@ -24,6 +24,7 @@ void CALC_INIT() {
   CurrentCALCState = CALC0;
   CurrentKBState = FUNC;
   CurrentFrameState = &calcScreen;
+  frames.push_back(&calcScreen);
   dynamicScroll = 0;
   prev_dynamicScroll = -1;
   lastTouch = -1;
@@ -53,21 +54,19 @@ void processKB_CALC() {
       // CONVERSIONS MODE 
       case CALC3:
         // HANDLE INPUTS
-        //No char recieved
+        // no char recieved
         if (inchar == 0);  
                          
         //SHIFT Recieved
         else if (inchar == 17) {                                  
           CurrentFrameState = &conversionFrameA;
-          CurrentFrameState->scroll = 0;
-          CurrentFrameState->prevScroll = -1;
+          calcSwitchedStates = 1;
           newLineAdded = true;
         }
         //FN Recieved
         else if (inchar == 18) {                                  
           CurrentFrameState = &conversionFrameB;
-          CurrentFrameState->scroll = 0;
-          CurrentFrameState->prevScroll = -1;
+          calcSwitchedStates = 1;
           newLineAdded = true;
         }
 
@@ -102,14 +101,20 @@ void processKB_CALC() {
         }
 
         currentMillis = millis();
-        //Make sure oled only updates at 60fps
+        // make sure oled only updates at 60fps
         if (currentMillis - OLEDFPSMillis >= 16) {
           OLEDFPSMillis = currentMillis;
           // ONLY SHOW OLEDLINE WHEN NOT IN SCROLL MODE
           if (lastTouch == -1) {
             oledLine(currentLine);
-            if (prev_dynamicScroll != dynamicScroll) prev_dynamicScroll = dynamicScroll;
-            updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
+            if (calcSwitchedStates){
+              dynamicScroll = CurrentFrameState->scroll;
+              prev_dynamicScroll = dynamicScroll;
+              calcSwitchedStates = 0;
+            } else {
+              if (prev_dynamicScroll != dynamicScroll) prev_dynamicScroll = dynamicScroll;
+              updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
+            }
           }
           else oledScrollCalc();
         }
@@ -125,7 +130,7 @@ void processKB_CALC() {
       // standard mode
       case CALC0:
         // HANDLE INPUTS
-        //No char recieved
+        // no char recieved
         if (inchar == 0);  
         else if (inchar == 12) {
           if (currentLine.length() > 0) {
@@ -144,37 +149,37 @@ void processKB_CALC() {
             currentLine += ",";
           }
         }
-        //TAB Recieved (This starts the font switcher now)
+        // TAB Recieved (This starts the font switcher now)
         else if (inchar == 9) {    
           CurrentCALCState = CALCFONT;
           CurrentKBState = FUNC;
           newState = true;                              
         }                                      
-        //SHIFT Recieved
+        // SHIFT Recieved
         else if (inchar == 17) {                                  
           if (CurrentKBState == SHIFT) CurrentKBState = NORMAL;
           else CurrentKBState = SHIFT;
         }
-        //FN Recieved
+        // FN Recieved
         else if (inchar == 18) {                                  
           if (CurrentKBState == FUNC) CurrentKBState = NORMAL;
           else CurrentKBState = FUNC;
         }
-        //Space Recieved
+        // Space Recieved
         else if (inchar == 32) {                                  
           currentLine += " ";
         }
-        //CR Recieved
+        // CR Recieved
         else if (inchar == 13) {    
           calcCRInput();                      
         }
-        //ESC / CLEAR Recieved
+        // ESC / CLEAR Recieved
         else if (inchar == 20) {                                  
           CurrentFrameState->lines->clear();
           currentLine = "";
           oledWord("Clearing...");
           drawCalc();
-          einkTextFrameDynamic(calcScreen,false,false);
+          einkTextFramesDynamic(frames,false,false);
           display.refresh();
           delay(300);
         }
@@ -223,7 +228,7 @@ void processKB_CALC() {
           currentLine = "";
           oledWord("Clearing...");
           drawCalc();
-          einkTextFrameDynamic(*CurrentFrameState,false,false);
+          einkTextFramesDynamic(frames,false,false);
           delay(300);
         }
         // Font Switcher (regular tab also starts the font switcher)
@@ -267,7 +272,7 @@ void processKB_CALC() {
           editingFile = "";
           currentLine = "";
           drawCalc();
-          einkTextFrameDynamic(calcScreen,true,false);
+          einkTextFramesDynamic(frames,true,false);
         }
         else if (inchar >= '0' && inchar <= '9') {
           int fontIndex = (inchar == '0') ? 10 : (inchar - '0');
@@ -317,7 +322,7 @@ void processKB_CALC() {
           refresh();
           drawCalc();
           *(CurrentFrameState->lines) = tempLines;
-          einkTextFrameDynamic(calcScreen,true,false);
+          einkTextFramesDynamic(frames,true,false);
         }
         currentMillis = millis();
         //Make sure oled only updates at 60fps
@@ -339,7 +344,7 @@ void einkHandler_CALC() {
         //standard mode
         if (newState && doFull) { 
           drawCalc();
-          einkTextFrameDynamic(calcScreen,true,false);
+          einkTextFramesDynamic(frames,true,false);
           //refresh();
           doFull = false;
         } else if (newLineAdded && !newState) {
@@ -347,10 +352,10 @@ void einkHandler_CALC() {
           if (refresh_count > REFRESH_MAX_CALC){
             drawCalc(); 
             setFastFullRefresh(false);
-            einkTextFrameDynamic(calcScreen,true,false);
+            einkTextFramesDynamic(frames,true,false);
             refresh_count = 0;
           } else {
-            einkTextFrameDynamic(calcScreen,true,false);
+            einkTextFramesDynamic(frames,true,false);
           }
           setFastFullRefresh(true);
         } else if (newState && !newLineAdded) {
@@ -364,7 +369,7 @@ void einkHandler_CALC() {
         //scientific mode
         if (newState && doFull) { 
           drawCalc();
-          einkTextFrameDynamic(calcScreen,true,false);
+          einkTextFramesDynamic(frames,true,false);
           //refresh();
           doFull = false;
         } else if (newLineAdded && !newState) {
@@ -372,10 +377,10 @@ void einkHandler_CALC() {
           if (refresh_count > REFRESH_MAX_CALC){
             drawCalc(); 
             setFastFullRefresh(false);
-            einkTextFrameDynamic(calcScreen,true,false);
+            einkTextFramesDynamic(frames,true,false);
             refresh_count = 0;
           } else {
-            einkTextFrameDynamic(calcScreen,true,false);
+            einkTextFramesDynamic(frames,true,false);
           }
           setFastFullRefresh(true);
         } else if (newState && !newLineAdded) {
@@ -386,10 +391,7 @@ void einkHandler_CALC() {
         //conversions 
         if (newState && doFull) { 
           drawCalc();
-          einkTextFrameDynamic(conversionScreen,true,false,true);
-          einkTextFrameDynamic(conversionDirection,true,false,true);
-          einkTextFrameDynamic(conversionFrameA,true,false,true);
-          einkTextFrameDynamic(conversionFrameB,true,false,true);
+          einkTextFramesDynamic(frames,true,false,true);
           //refresh();
           doFull = false;
         } else if (newLineAdded && !newState) {
@@ -397,16 +399,10 @@ void einkHandler_CALC() {
           if (refresh_count > REFRESH_MAX_CALC){
             drawCalc(); 
             setFastFullRefresh(false);
-            einkTextFrameDynamic(conversionScreen,true,false,true);
-           einkTextFrameDynamic(conversionDirection,true,false,true);
-            einkTextFrameDynamic(conversionFrameA,true,false,true);
-            einkTextFrameDynamic(conversionFrameB,true,false,true);
+            einkTextFramesDynamic(frames,true,false,true);
             refresh_count = 0;
           } else {
-            einkTextFrameDynamic(conversionScreen,true,false,true);
-            einkTextFrameDynamic(conversionDirection,true,false,true);
-            einkTextFrameDynamic(conversionFrameA,true,false,true);
-            einkTextFrameDynamic(conversionFrameB,true,false,true);
+            einkTextFramesDynamic(frames,true,false,true);
           }
           setFastFullRefresh(true);
         } else if (newState && !newLineAdded) {
@@ -424,7 +420,7 @@ void einkHandler_CALC() {
         dynamicScroll = (CurrentFrameState->lines->size() - 11);
         updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
         drawCalc(); 
-        einkTextFrameDynamic(calcScreen,true,false);
+        einkTextFramesDynamic(frames,true,false);
         calcSwitchedStates = true;
         setFastFullRefresh(false);
         break;
@@ -732,7 +728,7 @@ std::deque<String> convertToRPN(String expression) {
 }
 // SPLIT STRING INTO TOKENS
 // can make tokenize add proper operators instead of replacement operators so that convertToRPN is able to handle standard notation inputs from other apps
-// i.e. ":" -> "=", "'" -> "*", "\"" -> "^"
+// i.e. " : " -> " = ", " ' " -> " * ", " " " -> "^"
 std::vector<String> tokenize(const String& expression) {
     std::vector<String> tokens;
     String currentToken = "";
@@ -1258,7 +1254,9 @@ void calcCRInput(){
     CurrentFrameState->lines->clear();
     doFull = 1;
     drawCalc();
-    einkTextFrameDynamic(calcScreen,true,false);
+    frames.clear();
+    frames.push_back(&calcScreen);
+    einkTextFramesDynamic(frames,true,false);
   }
   // trim spaces
   currentLine.replace(" ", ""); 
@@ -1291,6 +1289,11 @@ void calcCRInput(){
         allLinesCalc = {};
         CurrentCALCState = CALC3;
         drawCalc();
+        frames.clear();
+        frames.push_back(&conversionScreen);
+        frames.push_back(&conversionFrameA);
+        frames.push_back(&conversionFrameB);
+        frames.push_back(&conversionDirection);
         CurrentFrameState = &conversionScreen;
         CurrentFrameState->scroll = 0;
         CurrentFrameState->prevScroll = -1;
@@ -1473,7 +1476,7 @@ bool isFunctionToken(const String& token) {
   if (token.isEmpty()) return false;
   return functionsCalc.count(token) > 0;
 }
-// CONFIRM A TOKEN IS A VARIABLE ECLUDING CONSTANTS
+// CONFIRM A TOKEN IS A VARIABLE INCLUDING CONSTANTS
 bool isVariableToken(const String& token) {
     if (token.isEmpty()) return false;
     // exclude constants and functions

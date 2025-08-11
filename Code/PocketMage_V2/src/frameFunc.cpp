@@ -6,51 +6,112 @@
 //  dP         dP     dP 88     88  dP   dP   dP  88888888P  Y88888P      //
 
 #include "globals.h"
-//
-void einkTextFrameDynamic(Frame &frame, bool doFull_, bool noRefresh, bool drawBox) {
-    const int maxTextWidth = display.width() - frame.left - frame.right;
-    setTXTFont(currentFont);
-    // Wrap and format text (could be cached in Frame if needed)
-    std::vector<String> wrappedLines = formatText(frame, maxTextWidth);
+///////////////////////////// DRAWING FUNCTIONS
+// DRAW ALL FRAMES STORED WITHIN TOTAL FRAME BOUNDING BOX
+void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh, bool drawBox) {
+    if (frames.empty()) return;
 
-    // Calculate visible range
-    long size = wrappedLines.size();
-    frame.maxLines = (display.height() - frame.top - frame.bottom - 8) / (fontHeight + lineSpacing);
-    long startLine, endLine;
-    getVisibleRange(&frame, size, startLine, endLine);
+    // calculate union bounding box of all frames
+    int minX = INT_MAX;
+    int minY = INT_MAX;
+    int maxX = 0;
+    int maxY = 0;
+    for (auto frame : frames) {
+        minX = std::min(minX, frame->left);
+        minY = std::min(minY, frame->top);
+        int frameRight = display.width() - frame->right;
+        int frameBottom = display.height() - frame->bottom;
+        maxX = std::max(maxX, frameRight);
+        maxY = std::max(maxY, frameBottom);
+    }
+    minY = alignDown8(minY);
+    int usableWidth = maxX - minX;
+    int usableHeight = alignUp8(maxY - minY);
 
-    // Precompute common variables
-    int usableX = frame.left;
-    int usableWidth = display.width() - frame.left - frame.right;
-    int usableY = alignDown8(frame.top);
+    // set partial window once
+    display.setPartialWindow(minX, minY, usableWidth, usableHeight);
 
-    if (doFull_) {
-        // Full refresh — clear whole area once
-        int usableHeight = alignUp8(display.height() - frame.top - frame.bottom);
-        display.setPartialWindow(usableX, usableY, usableWidth, usableHeight);
-        display.firstPage();
-        do {
-            display.fillRect(usableX, usableY, usableWidth, usableHeight, GxEPD_WHITE);
-            if (drawBox) drawFrameBox(usableX, usableY, usableWidth, usableHeight);
+    display.firstPage();
+    do {
+        if (doFull_) {
+            display.fillRect(minX, minY, usableWidth, usableHeight, GxEPD_WHITE);
+        }
+        // draw all frames relative to union bounding box
+        for (auto frame : frames) {
+            const int maxTextWidth = display.width() - frame->left - frame->right;
+            setTXTFont(currentFont);
 
+            // format wrapped lines for frame
+            std::vector<String> wrappedLines = formatText(*frame, maxTextWidth);
+
+            long size = wrappedLines.size();
+            frame->maxLines = (display.height() - frame->top - frame->bottom - 8) / (fontHeight + lineSpacing);
+            long startLine, endLine;
+            getVisibleRange(frame, size, startLine, endLine);
+
+            // calculate offset relative to union bounding box
+            int offsetY = frame->top - minY;
+
+            // draw lines for frame
             for (int i = startLine; i < endLine; i++) {
-                drawLineInFrame(wrappedLines[i], i - startLine, frame, usableY, false, false);
+                // draw line with clearLine = false (avoid clearing overlapping lines) and isPartial = !doFull_
+                drawLineInFrame(wrappedLines[i], i - startLine, *frame, offsetY, false, !doFull_);
             }
-        } while (display.nextPage());
-    } 
-    else {
-        // Partial refresh — only clear/draw per line
-        int heightAligned = alignUp8((fontHeight + lineSpacing) * (endLine - startLine));
-        display.setPartialWindow(usableX, usableY, usableWidth, heightAligned);
-        display.firstPage();
-        do {
-            for (int i = startLine; i < endLine; i++) {
-                drawLineInFrame(wrappedLines[i], i - startLine, frame, usableY, true, true);
+
+            if (drawBox) {
+                // draw box adjusted for union window origin
+                int boxX = frame->left;
+                int boxY = frame->top;
+                int boxWidth = display.width() - frame->left - frame->right;
+                int boxHeight = display.height() - frame->top - frame->bottom;
+                drawFrameBox(boxX, boxY, boxWidth, boxHeight);
             }
-        } while (display.nextPage());
+        }
+    } while (display.nextPage());
+
+    if (!noRefresh) {
+        //display.display();
     }
 }
+// DRAW BOX AROUND FRAME
+void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight) {
+    display.drawFastHLine(usableX, usableY, usableWidth, GxEPD_BLACK); // Top
+    display.drawFastHLine(usableX, usableY + usableHeight - 1, usableWidth, GxEPD_BLACK); // Bottom
+    display.drawFastVLine(usableX, usableY, usableHeight, GxEPD_BLACK); // Left
+    display.drawFastVLine(usableX + usableWidth - 1, usableY, usableHeight, GxEPD_BLACK); // Right
+}
+// DRAW SINGLE LINE IN FRAME
+void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial) {
+    if (srcLine.length() == 0) return;
 
+    String line = srcLine;
+    bool rightAlign  = line.startsWith("~R~");
+    bool centerAlign = line.startsWith("~C~");
+    if (rightAlign || centerAlign) line.remove(0, 3);
+
+    int16_t x1, y1;
+    uint16_t lineWidth, lineHeight;
+    display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
+
+    int cursorX = computeCursorX(frame, rightAlign, centerAlign, x1, lineWidth);
+
+    int yRaw = frame.top + lineIndex * (fontHeight + lineSpacing);
+    int yDraw = yRaw + fontHeight - y1; 
+
+    if (clearLine) {
+        int yClear = alignDown8(yRaw);
+        int clearHeight = alignUp8(fontHeight + lineSpacing + abs(y1));
+        display.fillRect(frame.left, yClear,
+                         display.width() - frame.left - frame.right,
+                         clearHeight,
+                         GxEPD_WHITE);
+    }
+
+    display.setCursor(cursorX, yDraw);
+    display.print(line);
+}
+
+///////////////////////////// TEXT POSITION FUNCTIONS
 // FORMAT TEXT BASED ON FRAME'S DIMENSIONS
 std::vector<String> formatText(Frame &frame,int maxTextWidth){
   std::vector<String> wrappedLines = {};
@@ -71,7 +132,7 @@ std::vector<String> formatText(Frame &frame,int maxTextWidth){
     // cut original marker to add it to cut partial text
     bool rightAlign = originalLine.startsWith("~R~");
     bool centerAlign = originalLine.startsWith("~C~");
-    // clip right align marker
+    // clip align marker
     String line = (rightAlign || centerAlign) ? originalLine.substring(3) : originalLine; 
     display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
 
@@ -88,12 +149,12 @@ std::vector<String> formatText(Frame &frame,int maxTextWidth){
       // update running word
       currentWord += c;
 
-      // Check word boundaries (space or end of string)
+      // check word boundaries (space or end of string)
       // if you have the end of the word/line
       if (c == ' ' || i == line.length() - 1) {
         // create a test line with the line + word
         String testLine = currentLine + currentWord;
-        // check boundries
+        // check boundaries
         display.getTextBounds(testLine, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
 
         // if the test linewidth overruns the frame, push the line we are building, adding right align if needed (consider adding center align check)
@@ -109,7 +170,7 @@ std::vector<String> formatText(Frame &frame,int maxTextWidth){
             currentLine = "";
           }
 
-          // Handle very long words 
+          // handle very long words 
           while (currentWord.length() > 0) {
             // set initial split position
             int splitPos = 1;
@@ -139,7 +200,7 @@ std::vector<String> formatText(Frame &frame,int maxTextWidth){
         currentWord = "";
       }
     }
-    // puah line to wrapped lines
+    // push line to wrapped lines
     if (currentLine.length() > 0) {
       if (rightAlign){
         wrappedLines.push_back("~R~" + currentLine);
@@ -154,51 +215,8 @@ std::vector<String> formatText(Frame &frame,int maxTextWidth){
   return wrappedLines;
 
 }
-
-// DRAW SINGLE LINE IN FRAME
-void drawLineInFrame(const String &srcLine, int lineIndex, const Frame &frame,
-                     int usableY, bool clearLine, bool isPartial) {
-    if (srcLine.length() == 0) return;
-
-    String line = srcLine;
-    bool rightAlign  = line.startsWith("~R~");
-    bool centerAlign = line.startsWith("~C~");
-    if (rightAlign || centerAlign) line.remove(0, 3);
-
-    int16_t x1, y1;
-    uint16_t lineWidth, lineHeight;
-    display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-
-    int cursorX = computeCursorX(frame, rightAlign, centerAlign, x1, lineWidth);
-
-    // Y position - modified calculation
-    int yRaw = frame.top + lineIndex * (fontHeight + lineSpacing);
-    int yDraw = yRaw + fontHeight - y1; // Accounts for text baseline and descenders
-
-    if (clearLine) {
-        int yClear = alignDown8(yRaw);
-        int clearHeight = alignUp8(fontHeight + lineSpacing + abs(y1)); // Ensure full text height is cleared
-        display.fillRect(frame.left, yClear,
-                         display.width() - frame.left - frame.right,
-                         clearHeight,
-                         GxEPD_WHITE);
-    }
-
-    display.setCursor(cursorX, yDraw);
-    display.print(line);
-}
-
-// DRAW BOX AROUND FRAME
-void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight) {
-    display.drawFastHLine(usableX, usableY, usableWidth, GxEPD_BLACK); // Top
-    display.drawFastHLine(usableX, usableY + usableHeight - 1, usableWidth, GxEPD_BLACK); // Bottom
-    display.drawFastVLine(usableX, usableY, usableHeight, GxEPD_BLACK); // Left
-    display.drawFastVLine(usableX + usableWidth - 1, usableY, usableHeight, GxEPD_BLACK); // Right
-}
-
-
 // FIND START AND END LINES OF FRAME
-void getVisibleRange(const Frame *f, long totalLines, long &startLine, long &endLine) {
+void getVisibleRange(Frame *f, long totalLines, long &startLine, long &endLine) {
     if (totalLines <= 0) {
         startLine = endLine = 0;
         return;
@@ -211,13 +229,13 @@ void getVisibleRange(const Frame *f, long totalLines, long &startLine, long &end
     startLine = max(0L, totalLines - displayLines - scrollOffset);
     endLine   = min(totalLines, startLine + displayLines);
 }
-
 // COMPUTE X POS IN FRAME
-int computeCursorX(const Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth) {
+int computeCursorX(Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth) {
     const int paddingFix = 16;
     int usableWidth = display.width() - frame.left - frame.right;
     int base;
 
+    // draw lines with alignment
     if (rightAlign) {
         base = frame.left + usableWidth - lineWidth - paddingFix;
     } 
@@ -232,5 +250,7 @@ int computeCursorX(const Frame &frame, bool rightAlign, bool centerAlign, int16_
     return base - x1 + X_OFFSET;
 }
 
+///////////////////////////// HELPER FUNCTIONS
+// align numbers to be divisible by 8, useful for partial windows (y & h)
 int alignDown8(int v) { return v - (v % 8); }
 int alignUp8(int v)   { return (v % 8) ? v + (8 - (v % 8)) : v; }

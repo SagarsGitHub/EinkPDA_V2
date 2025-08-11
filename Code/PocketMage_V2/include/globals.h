@@ -229,6 +229,7 @@ extern String workingFile;
 
 // <frameFunc.cpp>
 # define X_OFFSET 4
+extern std::vector<Frame*> frames;
 
 // FUNCTION PROTOTYPES
 // <sysFunc.ino>
@@ -283,7 +284,6 @@ void einkTextDynamic(bool doFull_, bool noRefresh = false);
 void setTXTFont(const GFXfont *font);
 void setFastFullRefresh(bool setting);
 void drawStatusBar(String input);
-void getVisibleRange(const Frame *f, long totalLines, long &startLine, long &endLine); //Calc
 void drawCalc(); // Calc
 
 // <FILEWIZ.ino>
@@ -344,11 +344,12 @@ void einkHandler_TASKS();
 void processKB_TASKS();
 
 // <FRAMES.cpp>
-void einkTextFrameDynamic(Frame &Frame,bool doFull_, bool noRefresh, bool drawBox = false);  // Calc
+void drawLineInFrame( String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial);
+void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh, bool drawBox = false); // Calc
 std::vector<String> formatText(Frame &frame,int maxTextWidth);
-void drawLineInFrame(const String &srcLine, int lineIndex, const Frame &frame, int usableY, bool clearLine, bool isPartial);
 void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight);
-int computeCursorX(const Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth);
+void getVisibleRange(Frame *f, long totalLines, long &startLine, long &endLine); //Calc
+int computeCursorX(Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth);
 int alignUp8(int v);
 int alignDown8(int v);
 
