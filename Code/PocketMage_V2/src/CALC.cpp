@@ -60,41 +60,42 @@ void processKB_CALC() {
         //SHIFT Recieved
         else if (inchar == 17) {                                  
           CurrentFrameState = &conversionFrameA;
+          conversionFrameA.bottom = FRAME_BOTTOM + 8;
+          conversionFrameB.bottom = FRAME_BOTTOM + 96;
           calcSwitchedStates = 1;
           newLineAdded = true;
         }
         //FN Recieved
         else if (inchar == 18) {                                  
           CurrentFrameState = &conversionFrameB;
+          conversionFrameA.bottom = FRAME_BOTTOM + 96;
+          conversionFrameB.bottom = FRAME_BOTTOM + 8;
           calcSwitchedStates = 1;
           newLineAdded = true;
         }
 
         // LEFT (scroll up)
         else if (inchar == 19 || inchar == 5) {
-          if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_MAX)){
-             dynamicScroll += SCROLL_MAX;
-          } else if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_MED)){
-             dynamicScroll += SCROLL_MED;
-          } else if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_SML)){
-             dynamicScroll += SCROLL_SML;
-          } else if (dynamicScroll < CurrentFrameState->lines->size() - 10) {
-            dynamicScroll++;
+          if (dynamicScroll < CurrentFrameState->lines->size() - 1) {
+            Serial.println("dynamicScroll ==" + String(dynamicScroll));
+            Serial.println("scroll up comparison ==" + String(((CurrentFrameState->lines->size()))));
+            delay(10);
+            if (!(CurrentFrameState->choice == -1)){
+              dynamicScroll++;
+            }
+            CurrentFrameState->choice += 1;
           }
           newLineAdded = true; 
           updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);                            
         }
         // RIGHT (scroll down)
         else if (inchar == 21 || inchar == 6) { 
-
-          if (dynamicScroll > (SCROLL_MAX +1)){
-            dynamicScroll -= SCROLL_MAX;
-          }else if (dynamicScroll > (SCROLL_MED +1)){
-            dynamicScroll -= SCROLL_MED;
-          } else if (dynamicScroll > (SCROLL_SML +1)){
-            dynamicScroll -= SCROLL_SML;
-          } else if (dynamicScroll > 1){
+          if (dynamicScroll > 0){
+            Serial.println("dynamicScroll ==" + String(dynamicScroll));
+            Serial.println("scroll down comparison ==" + String(0));
+            delay(10);
             dynamicScroll--;
+            CurrentFrameState->choice -= 1;
           } 
           updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
           newLineAdded = true;
@@ -391,7 +392,7 @@ void einkHandler_CALC() {
         //conversions 
         if (newState && doFull) { 
           drawCalc();
-          einkTextFramesDynamic(frames,true,false,true);
+          einkTextFramesDynamic(frames,true,false);
           //refresh();
           doFull = false;
         } else if (newLineAdded && !newState) {
@@ -399,10 +400,10 @@ void einkHandler_CALC() {
           if (refresh_count > REFRESH_MAX_CALC){
             drawCalc(); 
             setFastFullRefresh(false);
-            einkTextFramesDynamic(frames,true,false,true);
+            einkTextFramesDynamic(frames,true,false);
             refresh_count = 0;
           } else {
-            einkTextFramesDynamic(frames,true,false,true);
+            einkTextFramesDynamic(frames,true,false);
           }
           setFastFullRefresh(true);
         } else if (newState && !newLineAdded) {
@@ -484,7 +485,7 @@ void updateScrollFromTouch_Calc() {
     if (lastTouch != -1) {  // Compare with previous touch
       int touchDelta = abs(newTouch - lastTouch);
       if (touchDelta < 2) {  // Ignore large jumps (adjust threshold if needed)
-        int maxScroll = max(0, (int)CurrentFrameState->lines->size() - CurrentFrameState->maxLines);  // Ensure a valid scroll range
+        int maxScroll = max(0, (int)CurrentFrameState->lines->size());  // Ensure a valid scroll range
         dynamicScroll = CurrentFrameState->scroll;
         if (newTouch > lastTouch) {
           dynamicScroll = min((int)(dynamicScroll + 1), maxScroll);
@@ -502,6 +503,7 @@ void updateScrollFromTouch_Calc() {
     if (currentTime - lastTouchTime > TOUCH_TIMEOUT_MS) {
         lastTouch = -1;
         if (prev_dynamicScroll != dynamicScroll) {
+          Serial.println("dynamicScroll == " + String(dynamicScroll));
             newLineAdded = true;
             prev_dynamicScroll = dynamicScroll; // Update comparison value
             updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
@@ -1291,9 +1293,12 @@ void calcCRInput(){
         drawCalc();
         frames.clear();
         frames.push_back(&conversionScreen);
+
+        conversionUnit.scroll = 9;
         frames.push_back(&conversionFrameA);
         frames.push_back(&conversionFrameB);
         frames.push_back(&conversionDirection);
+        frames.push_back(&conversionUnit);
         CurrentFrameState = &conversionScreen;
         CurrentFrameState->scroll = 0;
         CurrentFrameState->prevScroll = -1;
@@ -1301,7 +1306,7 @@ void calcCRInput(){
     }
     else if (currentLine == "/4"){
         // help mode
-        CurrentCALCState = CALC4; 
+        CurrentCALCState = CALC4;
     }
     else if (currentLine == "/5") {
         // write current file to text

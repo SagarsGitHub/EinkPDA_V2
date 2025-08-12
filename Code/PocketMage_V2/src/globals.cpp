@@ -271,26 +271,35 @@ USBMSC msc;
     "excluding constants \n",
     "    ^^^ scroll up ^^^"
   };
-  std::vector<String> testTextA = {
+    std::vector<String> unitTypes = {
+    "~C~length\n",
+    "~C~area\n",
+    "~C~volume\n",
+    "~C~weight&mass\n",
+    "~C~temperature\n",
+    "~C~energy\n",
+    "~C~speed\n",
+    "~C~pressure\n",
+    "~C~data\n",
+    "~C~angle"
+  };
+  std::vector<String> conversionLength = {
     "~C~meters\n",
     "~C~feet\n",
     "~C~mm\n",
-    "~C~in\n"
-  };
-  std::vector<String> testTextB = {
-    "~C~meters\n",
-    "~C~feet\n",
-    "~C~mm\n",
-    "~C~in\n"
-  };
-  std::vector<String> dirText = {
-    "~C~<-\n",
-    "~C~->\n"
+    "~C~in"
   };
 
+  std::vector<String> dirText = {
+    "~C~<-\n",
+    "~C~->"
+  };
+  std::vector<String>* conversionFrameSharedText = &conversionLength;
+
   Frame calcScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM,&allLinesCalc);
-  Frame conversionScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 56, FRAME_BOTTOM,&allLinesCalc);
-  Frame conversionDirection(FRAME_LEFT + 128 ,FRAME_RIGHT + 128,FRAME_TOP + 8, FRAME_BOTTOM + 136,&dirText);
-  Frame conversionFrameA(FRAME_LEFT,FRAME_RIGHT + 176,FRAME_TOP + 8, FRAME_BOTTOM + 136,&testTextA);
-  Frame conversionFrameB(FRAME_LEFT + 176,FRAME_RIGHT,FRAME_TOP + 8, FRAME_BOTTOM + 136,&testTextB);
+  Frame conversionScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 88, FRAME_BOTTOM,&helpText,false,true);
+  Frame conversionUnit(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM + 136,&unitTypes,false,true);
+  Frame conversionDirection(FRAME_LEFT + 128 ,FRAME_RIGHT + 128,FRAME_TOP + 48, FRAME_BOTTOM + 96,&dirText,false,false);
+  Frame conversionFrameA(FRAME_LEFT,FRAME_RIGHT + 176,FRAME_TOP + 48, FRAME_BOTTOM + 96,conversionFrameSharedText,true,true);
+  Frame conversionFrameB(FRAME_LEFT + 176,FRAME_RIGHT,FRAME_TOP + 48, FRAME_BOTTOM + 96,conversionFrameSharedText,true,true);
   std::vector<Frame*> frames = {};

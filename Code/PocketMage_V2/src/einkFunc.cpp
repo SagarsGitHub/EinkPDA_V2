@@ -272,6 +272,7 @@ void drawCalc(){
     }
     // print current trig mode
     display.setCursor(240, 20);
+    if (!(CurrentCALCState == CALC3 || CurrentCALCState == CALC4)){
     switch (trigType){
       // 0 = degree mode
       case (0):
@@ -286,6 +287,7 @@ void drawCalc(){
         display.print("grad");
       break;
     }
+  }
   } while (display.nextPage());
   
 }

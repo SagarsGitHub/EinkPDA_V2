@@ -8,7 +8,7 @@
 #include "globals.h"
 ///////////////////////////// DRAWING FUNCTIONS
 // DRAW ALL FRAMES STORED WITHIN TOTAL FRAME BOUNDING BOX
-void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh, bool drawBox) {
+void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh) {
     if (frames.empty()) return;
 
     // calculate union bounding box of all frames
@@ -34,6 +34,7 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
     display.firstPage();
     do {
         if (doFull_) {
+            Serial.println("clearing rectangle size of current frame \n" );
             display.fillRect(minX, minY, usableWidth, usableHeight, GxEPD_WHITE);
         }
         // draw all frames relative to union bounding box
@@ -49,32 +50,34 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
             long startLine, endLine;
             getVisibleRange(frame, size, startLine, endLine);
 
-            // calculate offset relative to union bounding box
-            int offsetY = frame->top - minY;
-
-            // draw lines for frame
-            for (int i = startLine; i < endLine; i++) {
-                // draw line with clearLine = false (avoid clearing overlapping lines) and isPartial = !doFull_
-                drawLineInFrame(wrappedLines[i], i - startLine, *frame, offsetY, false, !doFull_);
-            }
-
-            if (drawBox) {
+            if (frame->box) {
                 // draw box adjusted for union window origin
+
                 int boxX = frame->left;
                 int boxY = frame->top;
                 int boxWidth = display.width() - frame->left - frame->right;
                 int boxHeight = display.height() - frame->top - frame->bottom;
+                display.fillRect(boxX, boxY, boxWidth, boxHeight, GxEPD_WHITE);
                 drawFrameBox(boxX, boxY, boxWidth, boxHeight);
             }
+
+            // calculate offset relative to union bounding box
+            int offsetY = frame->top - minY;
+            // draw lines for frame
+            for (int i = startLine; i < endLine; i++) {
+
+                // draw line with clearLine = false (avoid clearing overlapping lines) and isPartial = !doFull_
+                drawLineInFrame(wrappedLines[i], i - startLine, *frame, offsetY, false, !doFull_);
+
+            }
+
+
         }
     } while (display.nextPage());
-
-    if (!noRefresh) {
-        //display.display();
-    }
 }
 // DRAW BOX AROUND FRAME
 void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight) {
+    // draw box around frame within the partial window
     display.drawFastHLine(usableX, usableY, usableWidth, GxEPD_BLACK); // Top
     display.drawFastHLine(usableX, usableY + usableHeight - 1, usableWidth, GxEPD_BLACK); // Bottom
     display.drawFastVLine(usableX, usableY, usableHeight, GxEPD_BLACK); // Left
@@ -83,7 +86,7 @@ void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight) {
 // DRAW SINGLE LINE IN FRAME
 void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial) {
     if (srcLine.length() == 0) return;
-
+    // get alignment and remove alignment marker
     String line = srcLine;
     bool rightAlign  = line.startsWith("~R~");
     bool centerAlign = line.startsWith("~C~");
@@ -94,10 +97,11 @@ void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, 
     display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
 
     int cursorX = computeCursorX(frame, rightAlign, centerAlign, x1, lineWidth);
-
+    // set yRaw to frame top + spaces taken by all previous lines
     int yRaw = frame.top + lineIndex * (fontHeight + lineSpacing);
+    // set the cursor y so that the top of the font does not get cut off by the top of the frame
     int yDraw = yRaw + fontHeight - y1; 
-
+    // if clear line, clear box the size of the frame at the current line
     if (clearLine) {
         int yClear = alignDown8(yRaw);
         int clearHeight = alignUp8(fontHeight + lineSpacing + abs(y1));
@@ -106,9 +110,14 @@ void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, 
                          clearHeight,
                          GxEPD_WHITE);
     }
-
     display.setCursor(cursorX, yDraw);
-    display.print(line);
+    if (lineIndex == frame.choice){
+        display.print("-" +line);
+    } else {
+        display.print(line);
+    }
+    
+
 }
 
 ///////////////////////////// TEXT POSITION FUNCTIONS
@@ -221,36 +230,32 @@ void getVisibleRange(Frame *f, long totalLines, long &startLine, long &endLine) 
         startLine = endLine = 0;
         return;
     }
-
     long displayLines = constrain((long)f->maxLines, 0L, totalLines);
     long scrollOffset = constrain((long)f->scroll, 0L, max(0L, totalLines - displayLines));
-
     // bottom scroll = 0
     startLine = max(0L, totalLines - displayLines - scrollOffset);
     endLine   = min(totalLines, startLine + displayLines);
 }
 // COMPUTE X POS IN FRAME
 int computeCursorX(Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth) {
-    const int paddingFix = 16;
+    const int padding = 16;
     int usableWidth = display.width() - frame.left - frame.right;
     int base;
-
     // draw lines with alignment
     if (rightAlign) {
-        base = frame.left + usableWidth - lineWidth - paddingFix;
+        base = frame.left + usableWidth - lineWidth - padding;
     } 
     else if (centerAlign) {
-        base = frame.left + (usableWidth - lineWidth) / 2 - paddingFix / 2;
+        base = frame.left + (usableWidth - lineWidth) / 2 - padding / 2;
     } 
     else {
         base = frame.left;
     }
-
     // base - left margin + offset
     return base - x1 + X_OFFSET;
 }
 
 ///////////////////////////// HELPER FUNCTIONS
-// align numbers to be divisible by 8, useful for partial windows (y & h)
+// align numbers to be divisible by 8, useful for partial windows (y & h must be divisible by 8 with GxEPD2 with rotation == 3)
 int alignDown8(int v) { return v - (v % 8); }
 int alignUp8(int v)   { return (v % 8) ? v + (8 - (v % 8)) : v; }

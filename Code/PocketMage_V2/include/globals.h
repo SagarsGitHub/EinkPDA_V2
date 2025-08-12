@@ -161,13 +161,15 @@ class Frame {
   public: 
   int left,right,top, bottom;
   bool cursor = false;
+  bool box = false;
   std::vector<String>* lines = nullptr;
   long scroll = 0;
   long prevScroll = -1;
   int maxLines = 0;
+  int choice = -1;
 
-  Frame(int left,int right,int top,int bottom, std::vector<String>* linesPtr = nullptr,bool cursor = false)
-    : left(left), right(right), top(top),bottom(bottom), lines(linesPtr), cursor(cursor) { }
+  Frame(int left,int right,int top,int bottom, std::vector<String>* linesPtr = nullptr,bool cursor = false,bool box = false)
+    : left(left), right(right), top(top),bottom(bottom), lines(linesPtr), cursor(cursor), box(box) { }
   
 };
 // max refreshes before a full refresh is forced (change to 5 for eink longevity)
@@ -198,15 +200,17 @@ extern std::vector<String> helpText;
 extern char bufferString[20];
 extern int trigType;
 extern std::vector<String> prevTokens;
-extern std::vector<String> testTextA;
-extern std::vector<String> testTextB;
+extern std::vector<String> unitTypes;
+extern std::vector<String> conversionLength;
 extern Frame calcScreen;
 extern Frame conversionScreen;
+extern Frame conversionUnit;
 extern Frame conversionDirection;
 extern Frame conversionFrameA;
 extern Frame conversionFrameB;
 extern Frame conversionTypes;
 extern Frame *CurrentFrameState;
+extern std::vector<String>* conversionFrameSharedText;
 
 // <TASKS.ino>
 extern std::vector<std::vector<String>> tasks;
@@ -345,10 +349,10 @@ void processKB_TASKS();
 
 // <FRAMES.cpp>
 void drawLineInFrame( String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial);
-void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh, bool drawBox = false); // Calc
+void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh);
 std::vector<String> formatText(Frame &frame,int maxTextWidth);
 void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight);
-void getVisibleRange(Frame *f, long totalLines, long &startLine, long &endLine); //Calc
+void getVisibleRange(Frame *f, long totalLines, long &startLine, long &endLine);
 int computeCursorX(Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth);
 int alignUp8(int v);
 int alignDown8(int v);

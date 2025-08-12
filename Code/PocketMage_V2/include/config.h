@@ -10,7 +10,7 @@
 #define SLEEPMODE "TEXT"                        // TEXT, SPLASH, CLOCK
 #define TXT_APP_STYLE 1                         // 0: Old Style (NOT SUPPORTED), 1: New Style
 #define SET_CLOCK_ON_UPLOAD false               // Should system clock be set automatically on code upload?
-#define TOUCH_TIMEOUT_MS 120                   // Delay after scrolling to return to typing mode (ms)
+#define TOUCH_TIMEOUT_MS 1200                   // Delay after scrolling to return to typing mode (ms)
 #define SYS_METADATA_FILE "/sys/SDMMC_META.txt" // File path to the file system metadata file
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////|
 
