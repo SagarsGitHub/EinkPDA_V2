@@ -55,28 +55,7 @@ void processKB_CALC() {
 
       // CONVERSIONS MODE 
       case CALC3:
-      /*
-        //SHIFT Recieved
-        else if (inchar == 17) {                                  
-          CurrentFrameState = &conversionFrameA;
-          dynamicScroll = CurrentFrameState->scroll;
-          prev_dynamicScroll = -1;
-          conversionFrameA.bottom = FRAME_BOTTOM + 8;
-          conversionFrameB.bottom = FRAME_BOTTOM + 96;
-          calcSwitchedStates = 1;
-          newLineAdded = true;
-        }
-        //FN Recieved
-        else if (inchar == 18) {                                  
-          CurrentFrameState = &conversionFrameB;
-          dynamicScroll = CurrentFrameState->scroll;
-          prev_dynamicScroll = -1;
-          conversionFrameA.bottom = FRAME_BOTTOM + 96;
-          conversionFrameB.bottom = FRAME_BOTTOM + 8;
-          calcSwitchedStates = 1;
-          newLineAdded = true;
-        }
-      */
+
         // HANDLE INPUTS
         // no char recieved
         if (inchar == 0);  
@@ -427,15 +406,16 @@ void einkHandler_CALC() {
     if (calcSwitchedStates == 1){
       calcSwitchedStates = 0;
       if (CurrentCALCState != CALC3)  {
-          CurrentFrameState->lines->clear();
           doFull = 1;
-          drawCalc();
           frames.clear();
           frames.push_back(&calcScreen);
-      }      
-      doFull = 1;
-      drawCalc();
-      einkTextFramesDynamic(frames,true,false);
+          drawCalc();
+          einkTextFramesDynamic(frames,true,false);
+      } else {
+          einkTextFramesDynamic(frames,false,true);
+      }
+
+      
     } else {
       switch (CurrentCALCState) {
         case CALC0:
@@ -513,6 +493,7 @@ void einkHandler_CALC() {
         case CALC4:
           //help mode
           currentFont = &FreeMonoBold9pt7b;
+          CurrentFrameState = &helpScreen;
           setTXTFont(currentFont);
           // print out everything needed to understand basics of program, might be memory inefficient, remove or rector
           CurrentFrameState->lines->clear();
@@ -624,12 +605,18 @@ void updateScrollFromTouch_Calc() {
 ///////////////////////////// CALC EINK FUNCTIONS
 // CLOSE CALC AND UPDATE
 void closeCalc(AppState newAppState){
+  frames.clear();
+  frames.push_back(&calcScreen);
+  if (CurrentCALCState == CALC3){
+    CurrentCALCState == CALC0;
+  }
   // essential to display next app correctly 
   display.setFullWindow();
 
   display.fillScreen(GxEPD_WHITE);
   u8g2.clearBuffer();
   dynamicScroll = 0;
+  prev_dynamicScroll = -1;
   updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
   if (newAppState == TXT) {
     TXT_INIT();
@@ -1325,7 +1312,7 @@ String evaluateRPN(std::deque<String> rpnQueue,Unit *convA,Unit *convB) {
             if (evalStack.size() < 1) return "E: pick no n arg";
             int a = static_cast<int>(evalStack.top()); evalStack.pop();
             int choices = a;
-            if (evalStack.size() < choices) return "E: pick not enough choices";
+            if (evalStack.size() < choices) return "E: pick invalid choices";
             int pickedValue = random(1, choices+1);
             double valueToPush = 0;
 
@@ -1379,6 +1366,7 @@ void calcCRInput(){
         // standard mode
         CurrentCALCState = CALC0;
         CurrentFrameState = &calcScreen;
+        
         calcSwitchedStates = 1;
         newLineAdded = true;
     }  
@@ -1402,7 +1390,6 @@ void calcCRInput(){
     else if (currentLine == "/3"){
         // conversion
         display.clearScreen();
-        allLinesCalc = {};
         CurrentCALCState = CALC3;
         drawCalc();
         frames.clear();
@@ -1421,13 +1408,17 @@ void calcCRInput(){
     else if (currentLine == "/4"){
         // help mode
         CurrentCALCState = CALC4;
+        CurrentFrameState = &calcScreen;
+        CurrentFrameState->scroll = 0;
+        CurrentFrameState->prevScroll = -1;
+        CurrentFrameState->lines = &helpText;
         calcSwitchedStates = 1;
     }
     else if (currentLine == "/5") {
         // write current file to text
         oledWord("Exporting Data to TXT!");
         allLines = *(CurrentFrameState->lines);
-        // remvove '~R~' formatting (not used by txt app)
+        // remvove '~R~' or '~C~' formatting (not used by txt app)
         for (int i = 0; i < allLines.size();i++){
           if (!(i%2 == 0)){
             String temp = allLines[i - 1] + " = " + allLines[i].substring(3);
@@ -1455,18 +1446,17 @@ void calcCRInput(){
     }
     else {
       // no command, calculate answer
+      dynamicScroll = 0;
+      updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);
+      prevLine = currentLine;
+      Serial.println("PrevLine updated to : " + currentLine);
       if (CurrentCALCState == CALC3){
         if (CurrentFrameState == &conversionScreen){
           String conversionA = (*(conversionFrameA.lines))[conversionFrameA.scroll].substring(3);
           String conversionB = (*(conversionFrameB.lines))[conversionFrameB.scroll].substring(3);
-          Serial.println("convA = " + conversionA + "   convB = " + conversionB);
-          delay(200);
           printAnswer(currentLine,getUnit(conversionA),getUnit(conversionB));
         }
       } else {
-        dynamicScroll = 0;
-        updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);
-        prevLine = currentLine;
         printAnswer(currentLine, &emptyUnit, &emptyUnit);
       }
     }
@@ -1480,10 +1470,17 @@ String formatNumber(double value) {
     //Serial.println("formating number " + String(value));
     String result;
     char buffer[32];
-
+    Serial.println("formatting number!");
+    if (CurrentCALCState == CALC3){
+      if (value > INT_MAX || value < INT_MIN) {
+        Serial.println("sending scientifc instead for conversion!");
+        return formatScientific(value);
+      }
+    } 
     if (CurrentCALCState == CALC2){
       return formatScientific(value);
-    } else {
+    } 
+    else {
       // handle overflow
       if (value > INT_MAX) return "inf";
       if (value < INT_MIN) return "-inf";
@@ -1494,6 +1491,7 @@ String formatNumber(double value) {
       }
       result = trimValue(value);
     }
+    Serial.println("Returning standard number!");
     return result;
 }
 // CONVERT DOUBLE TO SCIENTIFIC NOTATION

@@ -215,6 +215,7 @@ extern char bufferString[20];
 extern int trigType;
 extern Frame calcScreen;
 extern Frame conversionScreen;
+extern Frame helpScreen;
 extern Frame conversionUnit;
 extern Frame conversionDirection;
 extern Frame conversionFrameA;

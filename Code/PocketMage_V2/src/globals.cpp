@@ -310,15 +310,16 @@ USBMSC msc;
     "~C~ft"
   };
   std::vector<String> dirText = {
-    "~C~->\n",
-    "~C~<->"
+    "~C~<-\n",
+    "~C~->"
   };
 
   std::vector<String> allLinesCalcConversion;
   std::vector<String>* conversionFrameSharedText = &conversionLength;
 
   Frame calcScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM,&allLinesCalc);
-  Frame conversionScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 88, FRAME_BOTTOM,&allLinesCalcConversion,false,true);
+  Frame conversionScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 88, FRAME_BOTTOM,&allLinesCalc,false,true);
+  Frame helpScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP,FRAME_BOTTOM,&helpText,false,true);
   Frame conversionUnit(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM + 136,&unitTypes,false,true);
   Frame conversionDirection(FRAME_LEFT + 128 ,FRAME_RIGHT + 128,FRAME_TOP + 48, FRAME_BOTTOM + 96,&dirText,false,false);
   Frame conversionFrameA(FRAME_LEFT,FRAME_RIGHT + 176,FRAME_TOP + 48, FRAME_BOTTOM + 96,conversionFrameSharedText,true,true);
