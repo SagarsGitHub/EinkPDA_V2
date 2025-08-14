@@ -153,6 +153,25 @@ USBMSC msc;
   // <CALC.cpp>
   CALCState CurrentCALCState = CALC0;
   Frame *CurrentFrameState = &calcScreen;
+  constexpr std::array<Unit, 5> lengthUnits {{
+    {"meter",     "m",   1.0,        0.0},
+    {"kilometer", "km",  1000.0,     0.0},
+    {"centimeter","cm",  0.01,       0.0},
+    {"inch",      "in",  0.0254,     0.0},
+    {"foot",      "ft",  0.3048,     0.0}
+  }};
+
+  constexpr std::array<Unit, 3> temperatureUnits {{
+      {"kelvin",     "K",   1.0,        0.0},
+      {"celsius",    "°C",  1.0,      273.15},
+      {"fahrenheit", "°F",  5.0/9.0,  459.67}
+  }};
+
+
+
+  //std::vector<String, Unit> unitLookup = {};
+
+
   int calcSwitchedStates = 0;
   int trigType = 1;
   int refresh_count = 0;
@@ -165,14 +184,14 @@ USBMSC msc;
   String calculatedResult = "";
   String prevLine = "";
   char bufferString[20];
-  std::map<String, float> variables= {};
-  std::set<String> constantsCalc = {
+  std::map<String, float> variables = {};
+  const std::set<String> constantsCalc = {
          "inf", "-inf", "pi", "e", "ans"
   };
-  std::set<String> operatorsCalc = {
+  const std::set<String> operatorsCalc = {
         "+", "-", "'", "/", "E", "%", "=", "!", "\""
   };
-  std::set<String> functionsCalc = {
+  const std::set<String> functionsCalc = {
         // trig
         "sin", "cos", "tan", "asin", "acos", "atan",
         "sinh", "cosh", "tanh", "sec", "csc", "cot", 
@@ -271,7 +290,7 @@ USBMSC msc;
     "excluding constants \n",
     "    ^^^ scroll up ^^^"
   };
-    std::vector<String> unitTypes = {
+  std::vector<String> unitTypes = {
     "~C~length\n",
     "~C~area\n",
     "~C~volume\n",
@@ -284,22 +303,25 @@ USBMSC msc;
     "~C~angle"
   };
   std::vector<String> conversionLength = {
-    "~C~meters\n",
-    "~C~feet\n",
-    "~C~mm\n",
-    "~C~in"
+    "~C~m\n",
+    "~C~km\n",
+    "~C~cm\n",
+    "~C~in\n",
+    "~C~ft"
+  };
+  std::vector<String> dirText = {
+    "~C~->\n",
+    "~C~<->"
   };
 
-  std::vector<String> dirText = {
-    "~C~<-\n",
-    "~C~->"
-  };
+  std::vector<String> allLinesCalcConversion;
   std::vector<String>* conversionFrameSharedText = &conversionLength;
 
   Frame calcScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM,&allLinesCalc);
-  Frame conversionScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 88, FRAME_BOTTOM,&helpText,false,true);
+  Frame conversionScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 88, FRAME_BOTTOM,&allLinesCalcConversion,false,true);
   Frame conversionUnit(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM + 136,&unitTypes,false,true);
   Frame conversionDirection(FRAME_LEFT + 128 ,FRAME_RIGHT + 128,FRAME_TOP + 48, FRAME_BOTTOM + 96,&dirText,false,false);
   Frame conversionFrameA(FRAME_LEFT,FRAME_RIGHT + 176,FRAME_TOP + 48, FRAME_BOTTOM + 96,conversionFrameSharedText,true,true);
   Frame conversionFrameB(FRAME_LEFT + 176,FRAME_RIGHT,FRAME_TOP + 48, FRAME_BOTTOM + 96,conversionFrameSharedText,true,true);
   std::vector<Frame*> frames = {};
+  Unit emptyUnit = {"","",NAN,NAN};

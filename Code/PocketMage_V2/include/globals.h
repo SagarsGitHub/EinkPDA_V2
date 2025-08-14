@@ -155,53 +155,64 @@ extern int lastTouch;
 extern unsigned long lastTouchTime;
 
 // <CALC.cpp>
-enum CALCState { CALC0, CALC1, CALC2, CALC3, CALC4, CALCFONT };
-// define a frame with margins
-class Frame {
-  public: 
-  int left,right,top, bottom;
-  bool cursor = false;
-  bool box = false;
-  std::vector<String>* lines = nullptr;
-  long scroll = 0;
-  long prevScroll = -1;
-  int maxLines = 0;
-  int choice = -1;
-
-  Frame(int left,int right,int top,int bottom, std::vector<String>* linesPtr = nullptr,bool cursor = false,bool box = false)
-    : left(left), right(right), top(top),bottom(bottom), lines(linesPtr), cursor(cursor), box(box) { }
-  
-};
-// max refreshes before a full refresh is forced (change to 5 for eink longevity)
 #define REFRESH_MAX_CALC 10
 #define SCROLL_MAX 8
 #define SCROLL_MED 4
 #define SCROLL_SML 2
-#define FRAME_TOP 32//const int reservedTop = 32;    // top for large calc frame
-#define FRAME_LEFT 10  //const int leftMargin = 8;    // left for large calc frame
-#define FRAME_RIGHT 10 //const int rightMargin = 20;   // right for large calc frame
+#define FRAME_TOP 32                                  // top for large calc frame
+#define FRAME_LEFT 10                                 // left for large calc frame
+#define FRAME_RIGHT 10                                // right for large calc frame
 #define FRAME_BOTTOM 32                               // bottom for large calc frame
+enum CALCState { CALC0, CALC1, CALC2, CALC3, CALC4, CALCFONT };
+struct Unit {
+    const char* name;  
+    const char* symbol;  
+    // factor * (value + offset) = convert from in to basis unit
+    // (inBase / to.factor) - to.offset  = convert from basis unit to output unit
+    double factor;         
+    double offset;         
+};
+class Frame {
+public: 
+  int left,right,top, bottom;
+  bool cursor = false;
+  bool box = false;
+  std::vector<String> *lines = nullptr;
+  long scroll = 0;
+  long prevScroll = -1;
+  int maxLines = 0;
+  int choice = -1;
+  Unit *unitA = nullptr;
+  Frame(int left,int right,int top,int bottom, std::vector<String>* linesPtr = nullptr,bool cursor = false,bool box = false)
+    : left(left), right(right), top(top),bottom(bottom), lines(linesPtr), cursor(cursor), box(box) { }
+  
+};
+extern const std::array<Unit, 5> lengthUnits;
+extern const std::array<Unit, 3> temperatureUnits;
+// max refreshes before a full refresh is forced (change to 5 for eink longevity)
 extern CALCState CurrentCALCState;
 extern int refresh_count;
 extern std::vector<String> allLinesCalc;
+extern  std::vector<String> allLinesCalcConversion;
 extern std::vector<String> allLinesConvA;
 extern std::vector<String> allLinesConvB;
 extern std::vector<String> allLinesConvC;
+extern std::vector<String> helpText;
 extern String cleanExpression;
 extern String calculatedResult;
 extern int calcSwitchedStates;
 extern String prevLine;
 extern std::map<String, float> variables;
-extern std::set<String> operatorsCalc;
-extern std::set<String> functionsCalc;
-extern std::set<String> constantsCalc;
-extern std::map<String, int> precedenceCalc;
-extern std::vector<String> helpText;
-extern char bufferString[20];
-extern int trigType;
+extern const std::set<String> operatorsCalc;
+extern const std::set<String> functionsCalc;
+extern const std::set<String> constantsCalc;
 extern std::vector<String> prevTokens;
 extern std::vector<String> unitTypes;
 extern std::vector<String> conversionLength;
+extern std::map<String, int> precedenceCalc;
+
+extern char bufferString[20];
+extern int trigType;
 extern Frame calcScreen;
 extern Frame conversionScreen;
 extern Frame conversionUnit;
@@ -211,6 +222,7 @@ extern Frame conversionFrameB;
 extern Frame conversionTypes;
 extern Frame *CurrentFrameState;
 extern std::vector<String>* conversionFrameSharedText;
+extern Unit emptyUnit;
 
 // <TASKS.ino>
 extern std::vector<std::vector<String>> tasks;
@@ -233,6 +245,8 @@ extern String workingFile;
 
 // <frameFunc.cpp>
 # define X_OFFSET 4
+// define a frame with margins
+
 extern std::vector<Frame*> frames;
 
 // FUNCTION PROTOTYPES
@@ -306,29 +320,34 @@ int countVisibleChars(String input);
 void updateScrollFromTouch();
 
 // <CALC.cpp>
-
+// main functions
 void einkHandler_CALC();
 void processKB_CALC();
 void CALC_INIT();
 void closeCalc(AppState newAppState); // calc eink function
 void oledScrollCalc(); // calc oled function
 void updateScrollFromTouch_Calc(); // new processSB_Calc?
+// strings
 void calcCRInput();
 String formatNumber(double value);
 String formatScientific(double value);
 String trimValue(double value);
-void printAnswer(String resultOutput); 
+void printAnswer(String inputString,Unit *convA, Unit *convB); 
+int calculate(const String& cleanedInput,String &resultOutput,Unit *convA,Unit *convB);
+// algorithms
+std::deque<String> convertToRPN(String expression);
+String evaluateRPN(std::deque<String> rpnQueue,Unit *convA,Unit *convB);
+std::vector<String> tokenize(const String& expression);
+// helpers
+void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset = false);
 bool isNumberToken(const String& token);
 bool isVariableToken(const String& token);
 bool isFunctionToken(const String& token);
 bool isOperatorToken(const String& token);
 bool isConstantToken(const String& token);
 double convertTrig(double input, int trigType,bool reverse = false);
-int calculate(const String& cleanedInput,String &resultOutput);
-std::deque<String> convertToRPN(String expression);
-String evaluateRPN(std::deque<String> rpnQueue);
-std::vector<String> tokenize(const String& expression);
-void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset = false);
+double convert(double value, Unit *from, Unit *to);
+Unit* getUnit(const String& key);
 
 
 // <HOME.ino>
@@ -348,10 +367,13 @@ void einkHandler_TASKS();
 void processKB_TASKS();
 
 // <FRAMES.cpp>
-void drawLineInFrame( String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial);
+// main functions
 void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh);
+// text boxes
 std::vector<String> formatText(Frame &frame,int maxTextWidth);
+void drawLineInFrame( String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial);
 void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight);
+// helpers
 void getVisibleRange(Frame *f, long totalLines, long &startLine, long &endLine);
 int computeCursorX(Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth);
 int alignUp8(int v);

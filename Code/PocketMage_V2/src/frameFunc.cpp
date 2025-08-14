@@ -64,10 +64,15 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
             // calculate offset relative to union bounding box
             int offsetY = frame->top - minY;
             // draw lines for frame
-            for (int i = startLine; i < endLine; i++) {
+            if (frame->choice != -1 && (endLine - startLine == 1)){
+                drawLineInFrame(wrappedLines[frame->choice], 0, *frame, offsetY, false, !doFull_);
+            } else {
+                for (int i = startLine; i < endLine; i++) {
 
                 // draw line with clearLine = false (avoid clearing overlapping lines) and isPartial = !doFull_
                 drawLineInFrame(wrappedLines[i], i - startLine, *frame, offsetY, false, !doFull_);
+
+            }
 
             }
 
@@ -111,8 +116,8 @@ void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, 
                          GxEPD_WHITE);
     }
     display.setCursor(cursorX, yDraw);
-    if (lineIndex == frame.choice){
-        display.print("-" +line);
+    if (lineIndex == frame.choice &&  CurrentFrameState == &frame){
+        display.print("- " +line);
     } else {
         display.print(line);
     }
