@@ -7,6 +7,7 @@
 #include <U8g2lib.h>
 #include <Wire.h>
 #include <Adafruit_TCA8418.h>
+#include <pgmspace.h>
 #include <vector>
 #include <queue>
 #include <stack>
@@ -30,6 +31,8 @@
 
 #include "assets.h"
 #include "config.h"
+#include <stdint.h>
+#include <stddef.h>
 
 // FONTS
 // 9x7
@@ -155,6 +158,7 @@ extern int lastTouch;
 extern unsigned long lastTouchTime;
 
 // <CALC.cpp>
+// max refreshes before a full refresh is forced (change to 5 for eink longevity)
 #define REFRESH_MAX_CALC 10
 #define SCROLL_MAX 8
 #define SCROLL_MED 4
@@ -172,58 +176,31 @@ struct Unit {
     double factor;         
     double offset;         
 };
-class Frame {
-public: 
-  int left,right,top, bottom;
-  bool cursor = false;
-  bool box = false;
-  std::vector<String> *lines = nullptr;
-  long scroll = 0;
-  long prevScroll = -1;
-  int maxLines = 0;
-  int choice = -1;
-  Unit *unitA = nullptr;
-  Frame(int left,int right,int top,int bottom, std::vector<String>* linesPtr = nullptr,bool cursor = false,bool box = false)
-    : left(left), right(right), top(top),bottom(bottom), lines(linesPtr), cursor(cursor), box(box) { }
-  
+struct UnitSet {
+  const char* category;
+  const Unit* data;
+  size_t      size;
 };
-extern const std::array<Unit, 5> lengthUnits;
-extern const std::array<Unit, 3> temperatureUnits;
-// max refreshes before a full refresh is forced (change to 5 for eink longevity)
+extern Unit emptyUnit;
 extern CALCState CurrentCALCState;
 extern int refresh_count;
-extern std::vector<String> allLinesCalc;
-extern  std::vector<String> allLinesCalcConversion;
-extern std::vector<String> allLinesConvA;
-extern std::vector<String> allLinesConvB;
-extern std::vector<String> allLinesConvC;
-extern std::vector<String> helpText;
 extern String cleanExpression;
 extern String calculatedResult;
 extern int calcSwitchedStates;
 extern String prevLine;
 extern std::map<String, float> variables;
-extern const std::set<String> operatorsCalc;
-extern const std::set<String> functionsCalc;
-extern const std::set<String> constantsCalc;
+extern const char* operatorsCalc[];
+extern const size_t operatorsCalcCount;
+struct OpEntry { const char* token; uint8_t prec; bool rightAssoc; };
+extern const OpEntry OPS[];
+extern const size_t OPS_N;
+extern const char* functionsCalc[];
+extern const size_t functionsCalcCount;
+extern const char* constantsCalc[];
+extern const size_t constantsCalcCount;
 extern std::vector<String> prevTokens;
-extern std::vector<String> unitTypes;
-extern std::vector<String> conversionLength;
-extern std::map<String, int> precedenceCalc;
-
-extern char bufferString[20];
 extern int trigType;
-extern Frame calcScreen;
-extern Frame conversionScreen;
-extern Frame helpScreen;
-extern Frame conversionUnit;
-extern Frame conversionDirection;
-extern Frame conversionFrameA;
-extern Frame conversionFrameB;
-extern Frame conversionTypes;
-extern Frame *CurrentFrameState;
-extern std::vector<String>* conversionFrameSharedText;
-extern Unit emptyUnit;
+
 
 // <TASKS.ino>
 extern std::vector<std::vector<String>> tasks;
@@ -246,51 +223,203 @@ extern String workingFile;
 
 // <frameFunc.cpp>
 # define X_OFFSET 4
-// define a frame with margins
+#pragma region textSource
+// bit flags for alignment or future markup
+enum LineFlags : uint8_t { LF_NONE=0, LF_RIGHT= 1<<0, LF_CENTER= 1<<1 };
+struct LineView {
+  const char* ptr;   // points to NUL-terminated string in RAM or PROGMEM
+  uint16_t    len;   // byte length (no need to include '\0')
+  uint8_t     flags; // LineFlags
+};
+// read-only interface for any line list (PROGMEM table, arena, etc.)
+struct TextSource {
+  virtual ~TextSource() {}
+  virtual size_t   size() const = 0;
+  virtual LineView line(size_t i) const = 0; // never allocates
+};
+template<size_t MAX_LINES, size_t BUF_BYTES>
+struct FixedArenaSource : TextSource {
+  char     buf[BUF_BYTES];
+  uint16_t off[MAX_LINES];
+  uint16_t len_[MAX_LINES];
+  uint8_t  flags_[MAX_LINES];
+  size_t   nLines = 0;
+  size_t   used   = 0;
 
+  size_t size() const override { return nLines; }
+
+  LineView line(size_t i) const override {
+    return { buf + off[i], len_[i], flags_[i] };
+  }
+
+  void clear() { nLines = 0; used = 0; }
+
+  // Returns false if out of capacity; caller can choose to drop the oldest, etc.
+  bool pushLine(const char* s, uint16_t L, uint8_t flags = LF_NONE) {
+    if (nLines >= MAX_LINES || used + L + 1 > BUF_BYTES) return false;
+    memcpy(buf + used, s, L);
+    buf[used + L] = '\0';
+    off[nLines]   = (uint16_t)used;
+    len_[nLines]  = L;
+    flags_[nLines]= flags;
+    used         += L + 1;
+    nLines++;
+    return true;
+  }
+};
+struct ProgmemTableSource : TextSource {
+  // table is a PROGMEM array of PROGMEM pointers to '\0'-terminated strings
+  const char* const* table; // PROGMEM
+  size_t count;
+
+  ProgmemTableSource(const char* const* t, size_t n) : table(t), count(n) {}
+
+  size_t size() const override { return count; }
+
+  LineView line(size_t i) const override {
+    const char* p = (const char*)pgm_read_ptr(&table[i]);
+    // length from PROGMEM
+    uint16_t L = (uint16_t)strlen_P(p);
+    return { p, L, LF_NONE };
+  }
+};
+
+extern const char* const HELP_LINES[] PROGMEM;
+extern const size_t HELP_COUNT;
+extern const char* const UNIT_TYPES_LINES[] PROGMEM;
+extern const size_t UNIT_TYPES_COUNT;
+extern const char* const CONV_DIR_LINES[] PROGMEM;
+extern const size_t CONV_DIR_COUNT;
+extern const char* const CONV_LENGTH_LINES[] PROGMEM;
+extern const size_t CONV_LENGTH_COUNT;
+extern const char* const CONV_AREA_LINES[] PROGMEM;
+extern const size_t CONV_AREA_COUNT;
+extern const char* const CONV_VOLUME_LINES[] PROGMEM;
+extern const size_t CONV_VOLUME_COUNT;
+extern const char* const CONV_MASS_LINES[] PROGMEM;
+extern const size_t CONV_MASS_COUNT;
+extern const char* const CONV_TEMPERATURE_LINES[] PROGMEM;
+extern const size_t CONV_TEMPERATURE_COUNT;
+extern const char* const CONV_ENERGY_LINES[] PROGMEM;
+extern const size_t CONV_ENERGY_COUNT;
+extern const char* const CONV_SPEED_LINES[] PROGMEM;
+extern const size_t CONV_SPEED_COUNT;
+extern const char* const CONV_PRESSURE_LINES[] PROGMEM;
+extern const size_t CONV_PRESSURE_COUNT;
+extern const char* const CONV_DATA_LINES[] PROGMEM;
+extern const size_t CONV_DATA_COUNT;
+extern const char* const CONV_ANGLE_LINES[] PROGMEM;
+extern const size_t CONV_ANGLE_COUNT;
+extern const char* const CONV_TIME_LINES[] PROGMEM;
+extern const size_t CONV_TIME_COUNT;
+extern const char* const CONV_POWER_LINES[] PROGMEM;
+extern const size_t CONV_POWER_COUNT;
+extern const char* const CONV_FORCE_LINES[] PROGMEM;
+extern const size_t CONV_FORCE_COUNT;
+extern const char* const CONV_FREQUENCY_LINES[] PROGMEM;
+extern const size_t CONV_FREQUENCY_COUNT;
+
+
+
+extern const UnitSet UnitCatalog[];
+extern const size_t  UnitCatalogCount;
+
+extern const ProgmemTableSource* const allUnitLists[];
+extern const size_t              AllUnitListsCount;
+
+extern const UnitSet* CurrentUnitSet;
+extern const ProgmemTableSource* CurrentUnitListSrc;
+
+extern FixedArenaSource<512, 16384> calcLines;  // replaces allLinesCalc
+extern ProgmemTableSource gHelpSrc;
+extern ProgmemTableSource unitTypesSrc;
+extern ProgmemTableSource convDirSrc;
+extern ProgmemTableSource convLengthSrc;
+extern ProgmemTableSource convAreaSrc;
+extern ProgmemTableSource convVolumeSrc;
+extern ProgmemTableSource convMassSrc;
+extern ProgmemTableSource convTemperatureSrc;
+extern ProgmemTableSource convEnergySrc;
+extern ProgmemTableSource convSpeedSrc;
+extern ProgmemTableSource convPressureSrc;
+extern ProgmemTableSource convDataSrc;
+extern ProgmemTableSource convAngleSrc;
+extern ProgmemTableSource convTimeSrc;
+extern ProgmemTableSource convPowerSrc;
+extern ProgmemTableSource convForceSrc;
+extern ProgmemTableSource convFrequencySrc;
+extern const UnitSet* CurrentUnitSet; 
+
+#pragma endregion
+#pragma region frameSetup
+class Frame {
+public: 
+  int left,right,top, bottom, extendedBottom, originalBottom ;
+  bool cursor;
+  bool box;
+  int choice = -1;
+  long scroll = 0;
+  long prevScroll = -1;
+  int maxLines = 0;
+  long lastTotal = -1;
+  const TextSource* source = nullptr;
+  const Unit *unitA = nullptr;
+  Frame(int left,int right,int top,int bottom, TextSource* linesPtr,bool cursor,bool box)
+    : left(left), right(right), top(top),bottom(bottom), source(linesPtr), cursor(cursor), box(box) , extendedBottom(bottom), originalBottom(bottom) { }
+};
+extern Frame calcScreen;
+extern Frame conversionScreen;
+extern Frame helpScreen;
+extern Frame conversionUnit;
+extern Frame conversionDirection;
+extern Frame conversionFrameA;
+extern Frame conversionFrameB;
+extern Frame conversionTypes;
+extern Frame *CurrentFrameState;
+extern int currentFrameChoice;
 extern std::vector<Frame*> frames;
+#pragma endregion
 
 // FUNCTION PROTOTYPES
 // <sysFunc.ino>
-  // SYSTEM
-  void checkTimeout();
-  void PWR_BTN_irq();
-  void TCA8418_irq();
-  char updateKeypress();
-  void printDebug();
-  String vectorToString();
-  void stringToVector(String inputText);
-  void saveFile();
-  void writeMetadata(fs::FS &fs, const String& path);
-  void loadFile();
-  void delFile( String fileName);
-  void deleteMetadata(fs::FS &fs, String path);
-  void renFile(String oldFile, String newFile);
-  void renMetadata(fs::FS &fs, String oldPath, String newPath);
-  void copyFile(String oldFile, String newFile);
-  void updateBattState();
-  String removeChar(String str, char character);
-  void appendToFile(String path, String inText);
-  void setCpuSpeed(int newFreq);
-  void playJingle(String jingle);
-  void deepSleep(bool alternateScreenSaver = false);
+// SYSTEM
+void checkTimeout();
+void PWR_BTN_irq();
+void TCA8418_irq();
+char updateKeypress();
+void printDebug();
+String vectorToString();
+void stringToVector(String inputText);
+void saveFile();
+void writeMetadata(fs::FS &fs, const String& path);
+void loadFile();
+void delFile( String fileName);
+void deleteMetadata(fs::FS &fs, String path);
+void renFile(String oldFile, String newFile);
+void renMetadata(fs::FS &fs, String oldPath, String newPath);
+void copyFile(String oldFile, String newFile);
+void updateBattState();
+String removeChar(String str, char character);
+void appendToFile(String path, String inText);
+void setCpuSpeed(int newFreq);
+void playJingle(String jingle);
+void deepSleep(bool alternateScreenSaver = false);
 
-  // microSD
-  void listDir(fs::FS &fs, const char *dirname);
-  void readFile(fs::FS &fs, const char *path);
-  String readFileToString(fs::FS &fs, const char *path);
-  void writeFile(fs::FS &fs, const char *path, const char *message);
-  void appendFile(fs::FS &fs, const char *path, const char *message);
-  void renameFile(fs::FS &fs, const char *path1, const char *path2);
-  void deleteFile(fs::FS &fs, const char *path);
-  void setTimeFromString(String timeStr);
+// microSD
+void listDir(fs::FS &fs, const char *dirname);
+void readFile(fs::FS &fs, const char *path);
+String readFileToString(fs::FS &fs, const char *path);
+void writeFile(fs::FS &fs, const char *path, const char *message);
+void appendFile(fs::FS &fs, const char *path, const char *message);
+void renameFile(fs::FS &fs, const char *path1, const char *path2);
+void deleteFile(fs::FS &fs, const char *path);
+void setTimeFromString(String timeStr);
 
 // <OLEDFunc.ino>
 void oledWord(String word);
 void oledLine(String line, bool doProgressBar = true);
 void oledScroll();
 void infoBar();
-
 
 // <einkFunc.ino>
 void refresh();
@@ -309,6 +438,15 @@ void drawCalc(); // Calc
 void processKB_FILEWIZ();
 void einkHandler_FILEWIZ();
 
+// SPIFFS
+void listDir(fs::FS &fs, const char *dirname);
+void readFile(fs::FS &fs, const char *path);
+String readFileToString(fs::FS &fs, const char *path);
+void writeFile(fs::FS &fs, const char *path, const char *message);
+void appendFile(fs::FS &fs, const char *path, const char *message);
+void renameFile(fs::FS &fs, const char *path1, const char *path2);
+void deleteFile(fs::FS &fs, const char *path);
+
 // <TXT.ino>
 void TXT_INIT();
 void processKB_TXT();
@@ -321,35 +459,34 @@ int countVisibleChars(String input);
 void updateScrollFromTouch();
 
 // <CALC.cpp>
-// main functions
+  // main functions
 void einkHandler_CALC();
 void processKB_CALC();
 void CALC_INIT();
 void closeCalc(AppState newAppState); // calc eink function
-void oledScrollCalc(); // calc oled function
-void updateScrollFromTouch_Calc(); // new processSB_Calc?
-// strings
+inline void calcClear() { calcLines.clear(); }
+  // strings
 void calcCRInput();
 String formatNumber(double value);
 String formatScientific(double value);
 String trimValue(double value);
-void printAnswer(String inputString,Unit *convA, Unit *convB); 
-int calculate(const String& cleanedInput,String &resultOutput,Unit *convA,Unit *convB);
-// algorithms
+void printAnswer(String inputString,const Unit *convA,const Unit *convB); 
+int calculate(const String& cleanedInput,String &resultOutput,const Unit *convA,const Unit *convB);
+  // algorithms
 std::deque<String> convertToRPN(String expression);
-String evaluateRPN(std::deque<String> rpnQueue,Unit *convA,Unit *convB);
+String evaluateRPN(std::deque<String> rpnQueue,const Unit *convA,const Unit *convB);
 std::vector<String> tokenize(const String& expression);
-// helpers
+  // helpers
 void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset = false);
 bool isNumberToken(const String& token);
 bool isVariableToken(const String& token);
 bool isFunctionToken(const String& token);
-bool isOperatorToken(const String& token);
 bool isConstantToken(const String& token);
 double convertTrig(double input, int trigType,bool reverse = false);
-double convert(double value, Unit *from, Unit *to);
-Unit* getUnit(const String& key);
-
+double convert(double value,const Unit *from,const Unit *to);
+void calcAppend(const String& s, bool right=false, bool center=false);
+const Unit* getUnit(const String& sym);
+void selectUnitType(int idx);
 
 // <HOME.ino>
 void einkHandler_HOME();
@@ -368,18 +505,24 @@ void einkHandler_TASKS();
 void processKB_TASKS();
 
 // <FRAMES.cpp>
-// main functions
+  // main functions
 void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh);
-// text boxes
+  // text boxes
 std::vector<String> formatText(Frame &frame,int maxTextWidth);
-void drawLineInFrame( String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial);
+void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial);
 void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight);
-// helpers
+  // String formatting
+static size_t sliceThatFits(const char* s, size_t n, int maxTextWidth);
+std::vector<String> sourceToVector(const TextSource* src);
+String frameChoiceString(const Frame& f);  
+  //scroll
+void updateScrollFromTouch_Frame(); 
+void oledScrollFrame(); 
+  // helpers
 void getVisibleRange(Frame *f, long totalLines, long &startLine, long &endLine);
 int computeCursorX(Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth);
 int alignUp8(int v);
 int alignDown8(int v);
-
 
 // <PocketMage>
 void applicationEinkHandler();

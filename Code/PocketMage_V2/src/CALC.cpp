@@ -12,21 +12,570 @@
 // !! Commented for code-review
 // to-do 
 // make convertToRPN && evaluateRPN able to handle standard notation inputs from other apps
-// implement  complex numbers + matrix multiplication
-// implement for loops and conditionals
 // programming mode
+// implement matrix multiplication
+// implement for loops and conditionals
+#pragma region setupData
+#pragma region helpText
+
+const char hl0[]  PROGMEM = "\n";
+const char hl1[]  PROGMEM = " vvv scroll down vvv\n";
+const char hl2[]  PROGMEM = " This is the help screen\n";
+const char hl3[]  PROGMEM = "\n";
+const char hl4[]  PROGMEM = " press enter to exit\n";
+const char hl5[]  PROGMEM = "\n";
+const char hl6[]  PROGMEM = " NOTES:\n";
+const char hl7[]  PROGMEM = "~C~/6 -> EXIT APP\n";
+const char hl8[]  PROGMEM = "\n";
+const char hl9[]  PROGMEM = "~C~scroll <- ->\n";
+const char hl10[] PROGMEM = "\n";
+const char hl11[] PROGMEM = "~C~',,' equals '.'\n";
+const char hl12[] PROGMEM = "\n";
+const char hl13[] PROGMEM = " vvv scroll down vvv\n";
+const char hl14[] PROGMEM = "\n";
+const char hl15[] PROGMEM = "\n";
+const char hl16[] PROGMEM = " commands:\n";
+const char hl17[] PROGMEM = "\n";
+const char hl18[] PROGMEM = "~C~'/' + <command> \n";
+const char hl19[] PROGMEM = " 0 : standard\n";
+const char hl20[] PROGMEM = "  \n";
+const char hl21[] PROGMEM = " 1 : programming\n";
+const char hl22[] PROGMEM = "~C~(not implemented) \n";
+const char hl23[] PROGMEM = " 2 : scientific \n";
+const char hl24[] PROGMEM = "\n";
+const char hl25[] PROGMEM = " 3 : conversions \n";
+const char hl26[] PROGMEM = " <- = convA select \n";
+const char hl27[] PROGMEM = " -> = convB select \n";
+const char hl28[] PROGMEM = " select = unit select \n";
+const char hl29[] PROGMEM = " tab = dir select \n";
+const char hl30[] PROGMEM = " ' ' = main screen \n";
+const char hl31[] PROGMEM = " \n";
+const char hl32[] PROGMEM = " 4 : help\n";
+const char hl33[] PROGMEM = "  \n";
+const char hl34[] PROGMEM = " 5 : export to txt\n";
+const char hl35[] PROGMEM = "  \n";
+const char hl36[] PROGMEM = " 6 : EXIT\n";
+const char hl37[] PROGMEM = "  \n";
+const char hl38[] PROGMEM = " rad : radian mode\n";
+const char hl39[] PROGMEM = "  \n";
+const char hl40[] PROGMEM = " deg : degree mode\n";
+const char hl41[] PROGMEM = "  \n";
+const char hl42[] PROGMEM = " grad : gradian mode\n";
+const char hl43[] PROGMEM = "  \n";
+const char hl44[] PROGMEM = " keyboard changes:\n";
+const char hl45[] PROGMEM = "~C~default kb state:FUNC\n";
+const char hl46[] PROGMEM = "~C~tab && fn(tab) == font\n";
+const char hl47[] PROGMEM = "~C~bksp == fn(bskp)\n";
+const char hl48[] PROGMEM = "~C~left arrow scroll  ^ \n";
+const char hl49[] PROGMEM = "~C~right arrow scroll v \n";
+const char hl50[] PROGMEM = "operators:\n";
+const char hl51[] PROGMEM = "  \n";
+const char hl52[] PROGMEM = " - (unary included)\n";
+const char hl53[] PROGMEM = " +\n";
+const char hl54[] PROGMEM = " * (type: ' or a(b))\n";
+const char hl55[] PROGMEM = " /\n";
+const char hl56[] PROGMEM = " %\n";
+const char hl57[] PROGMEM = " !\n";
+const char hl58[] PROGMEM = " !! repeat prev line\n";
+const char hl59[] PROGMEM = " ^ (type: \")\n";
+const char hl60[] PROGMEM = " = (type: :)\n";
+const char hl61[] PROGMEM = " E (aEb)\n";
+const char hl62[] PROGMEM = "\n";
+const char hl63[] PROGMEM = "functions: \n";
+const char hl64[] PROGMEM = "\n";
+const char hl65[] PROGMEM = " sin(a) asin(a) sinh(a)\n";
+const char hl66[] PROGMEM = " csc(a) acsc(a) csch(a)\n";
+const char hl67[] PROGMEM = " cos(a) acos(a) cosh(a)\n";
+const char hl68[] PROGMEM = " sec(a) asec(a) sech(a)\n";
+const char hl69[] PROGMEM = " tan(a) atan(a) tanh(a)\n";
+const char hl70[] PROGMEM = " cot(a) acot(a) coth(a)\n";
+const char hl71[] PROGMEM = " sqrt(a)\n";
+const char hl72[] PROGMEM = " exp(a)     log(a)\n";
+const char hl73[] PROGMEM = " pow(a,b)   log10(a\n";
+const char hl74[] PROGMEM = " floor(a)   ceil(a)\n";
+const char hl75[] PROGMEM = " min(a)     max(a)\n";
+const char hl76[] PROGMEM = " round(a)\n";
+const char hl77[] PROGMEM = " abs(a)\n";
+const char hl78[] PROGMEM = " rand(a,b) from min a->b\n";
+const char hl79[] PROGMEM = " dice(a,b) a: num b:sides\n";
+const char hl80[] PROGMEM = " pick(a,n) a: choices\n";
+const char hl81[] PROGMEM = " ~C~n: no. choices\n";
+const char hl82[] PROGMEM = "\n";
+const char hl83[] PROGMEM = "variables: \n";
+const char hl84[] PROGMEM = "\n";
+const char hl85[] PROGMEM = "must start with alpha\n";
+const char hl86[] PROGMEM = "excluding constants \n";
+const char hl87[] PROGMEM = "~C~^^^ scroll up ^^^";
+
+// Table of pointers (in PROGMEM) and count
+const char* const HELP_LINES[] PROGMEM = {
+  hl0, hl1, hl2, hl3, hl4, hl5, hl6, hl7, hl8, hl9,
+  hl10, hl11, hl12, hl13, hl14, hl15, hl16, hl17, hl18, hl19,
+  hl20, hl21, hl22, hl23, hl24, hl25, hl26, hl27, hl28, hl29,
+  hl30, hl31, hl32, hl33, hl34, hl35, hl36, hl37, hl38, hl39,
+  hl40, hl41, hl42, hl43, hl44, hl45, hl46, hl47, hl48, hl49,
+  hl50, hl51, hl52, hl53, hl54, hl55, hl56, hl57, hl58, hl59,
+  hl60, hl61, hl62, hl63, hl64, hl65, hl66, hl67, hl68, hl69,
+  hl70, hl71, hl72, hl73, hl74, hl75, hl76, hl77, hl78, hl79,
+  hl80, hl81, hl82, hl83, hl84, hl85, hl86, hl87
+};
+
+const size_t HELP_COUNT = sizeof(HELP_LINES) / sizeof(HELP_LINES[0]);
+
+#pragma endregion // End of helpText
+#pragma region unitTypes
+
+const char ut0[]  PROGMEM = "~C~length\n";
+const char ut1[]  PROGMEM = "~C~area\n";
+const char ut2[]  PROGMEM = "~C~volume\n";
+const char ut3[]  PROGMEM = "~C~weight&mass\n";
+const char ut4[]  PROGMEM = "~C~temperature\n";
+const char ut5[]  PROGMEM = "~C~energy\n";
+const char ut6[]  PROGMEM = "~C~speed\n";
+const char ut7[]  PROGMEM = "~C~pressure\n";
+const char ut8[]  PROGMEM = "~C~data\n";
+const char ut9[]  PROGMEM = "~C~angle";
+const char ut10[]  PROGMEM = "~C~time";
+const char ut11[]  PROGMEM = "~C~power";
+const char ut12[]  PROGMEM = "~C~force";
+const char ut13[]  PROGMEM = "~C~frequency";
+
+const char* const UNIT_TYPES_LINES[] PROGMEM = {
+  ut0, ut1, ut2, ut3, ut4, ut5, ut6, ut7, ut8, ut9, ut10, ut11, ut12, ut13
+};
+
+const size_t UNIT_TYPES_COUNT = sizeof(UNIT_TYPES_LINES) / sizeof(UNIT_TYPES_LINES[0]);
+
+#pragma endregion // End of unitTypes
+#pragma region convDir
+
+
+const char cdir0[]  PROGMEM = "~C~->\n";
+const char cdir1[]  PROGMEM = "~C~<-";
+
+const char* const CONV_DIR_LINES[] PROGMEM = {
+  cdir0, cdir1
+};
+
+const size_t CONV_DIR_COUNT = sizeof(CONV_DIR_LINES) / sizeof(CONV_DIR_LINES[0]);
+
+#pragma endregion // End of convDir
+#pragma region convLength
+
+const char cl0[]  PROGMEM = "~C~m\n";
+const char cl1[]  PROGMEM = "~C~in\n";
+const char cl2[]  PROGMEM = "~C~yd\n";
+const char cl3[]  PROGMEM = "~C~ft\n";
+const char cl4[]  PROGMEM = "~C~mi\n";
+const char cl5[]  PROGMEM = "~C~km\n";
+const char cl6[]  PROGMEM = "~C~cm\n";
+const char cl7[]  PROGMEM = "~C~mm\n";
+const char cl8[]  PROGMEM = "~C~nm\n";
+const char cl9[]  PROGMEM = "~C~um\n";
+const char cl10[]  PROGMEM = "~C~M";
+
+const char* const CONV_LENGTH_LINES[] PROGMEM = {
+  cl0, cl1, cl2, cl3, cl4, cl5, cl6, cl7, cl8, cl9, cl10
+};
+
+const size_t CONV_LENGTH_COUNT = sizeof(CONV_LENGTH_LINES) / sizeof(CONV_LENGTH_LINES[0]);
+
+#pragma endregion // End of convLength
+#pragma region convArea
+
+const char ca0[]  PROGMEM = "~C~ha\n";
+const char ca1[]  PROGMEM = "~C~ac\n";
+const char ca2[]  PROGMEM = "~C~m^2\n";
+const char ca3[]  PROGMEM = "~C~in^2\n";
+const char ca4[]  PROGMEM = "~C~yd^2\n";
+const char ca5[]  PROGMEM = "~C~ft^2\n";
+const char ca6[]  PROGMEM = "~C~mi^2\n";
+const char ca7[]  PROGMEM = "~C~km^2\n";
+const char ca8[]  PROGMEM = "~C~cm^2\n";
+const char ca9[]  PROGMEM = "~C~mm^2\n";
+
+const char* const CONV_AREA_LINES[] PROGMEM = {
+  ca0, ca1, ca2, ca3, ca4, ca5, ca6, ca7, ca8, ca9
+};
+
+const size_t CONV_AREA_COUNT = sizeof(CONV_AREA_LINES) / sizeof(CONV_AREA_LINES[0]);
+
+#pragma endregion // End of convLength
+#pragma region convVolume
+
+// PROGMEM strings for menu display
+const char cv0[]  PROGMEM = "~C~m^3\n";
+const char cv1[]  PROGMEM = "~C~cm^3\n";
+const char cv2[]  PROGMEM = "~C~mm^3\n";
+const char cv3[]  PROGMEM = "~C~km^3\n";
+const char cv4[]  PROGMEM = "~C~L\n";
+const char cv5[]  PROGMEM = "~C~mL\n";
+const char cv6[]  PROGMEM = "~C~in^3\n";
+const char cv7[]  PROGMEM = "~C~ft^3\n";
+const char cv8[]  PROGMEM = "~C~yd^3\n";
+const char cv9[]  PROGMEM = "~C~tsp\n";
+const char cv10[]  PROGMEM = "~C~tbsp\n";
+const char cv11[]  PROGMEM = "~C~gal\n";
+const char cv12[] PROGMEM = "~C~qt\n";
+const char cv13[] PROGMEM = "~C~pt\n";
+const char cv14[] PROGMEM = "~C~cup\n";
+const char cv15[] PROGMEM = "~C~fl oz\n";
+
+const char* const CONV_VOLUME_LINES[] PROGMEM = {
+  cv0, cv1, cv2, cv3, cv4, cv5, cv6,
+  cv7, cv8, cv9, cv10, cv11, cv12, cv13,
+  cv14, cv15
+};
+
+const size_t CONV_VOLUME_COUNT = sizeof(CONV_VOLUME_LINES) / sizeof(CONV_VOLUME_LINES[0]);
+
+#pragma endregion // End of convVolume
+#pragma region convMass
+
+const char cm0[]  PROGMEM = "~C~kg\n";
+const char cm1[]  PROGMEM = "~C~g\n";
+const char cm2[]  PROGMEM = "~C~mg\n";
+const char cm3[]  PROGMEM = "~C~µg\n";
+const char cm4[]  PROGMEM = "~C~t\n";
+const char cm5[]  PROGMEM = "~C~lb\n";
+const char cm6[]  PROGMEM = "~C~oz\n";
+const char cm7[]  PROGMEM = "~C~st\n";
+const char cm8[]  PROGMEM = "~C~sh t\n";
+const char cm9[]  PROGMEM = "~C~l t\n";
+
+const char* const CONV_MASS_LINES[] PROGMEM = {
+  cm0, cm1, cm2, cm3, cm4, cm5, cm6, cm7, cm8, cm9
+};
+
+const size_t CONV_MASS_COUNT = sizeof(CONV_MASS_LINES) / sizeof(CONV_MASS_LINES[0]);
+
+#pragma endregion
+#pragma region convTemperature
+
+const char ct0[] PROGMEM = "~C~K\n";
+const char ct1[] PROGMEM = "~C~°C\n";
+const char ct2[] PROGMEM = "~C~°F\n";
+const char ct3[] PROGMEM = "~C~°R\n";
+
+const char* const CONV_TEMPERATURE_LINES[] PROGMEM = {
+  ct0, ct1, ct2, ct3
+};
+
+const size_t CONV_TEMPERATURE_COUNT =
+    sizeof(CONV_TEMPERATURE_LINES) / sizeof(CONV_TEMPERATURE_LINES[0]);
+
+#pragma endregion
+#pragma region convEnergy
+
+const char ce0[] PROGMEM = "~C~J\n";
+const char ce1[] PROGMEM = "~C~kJ\n";
+const char ce2[] PROGMEM = "~C~cal\n";
+const char ce3[] PROGMEM = "~C~kcal\n";
+const char ce4[] PROGMEM = "~C~Wh\n";
+const char ce5[] PROGMEM = "~C~kWh\n";
+const char ce6[] PROGMEM = "~C~eV\n";
+const char ce7[] PROGMEM = "~C~BTU\n";
+const char ce8[] PROGMEM = "~C~therm\n";
+
+const char* const CONV_ENERGY_LINES[] PROGMEM = {
+  ce0, ce1, ce2, ce3, ce4, ce5, ce6, ce7, ce8
+};
+
+const size_t CONV_ENERGY_COUNT =
+    sizeof(CONV_ENERGY_LINES) / sizeof(CONV_ENERGY_LINES[0]);
+
+#pragma endregion
+#pragma region convSpeed
+const char cs0[] PROGMEM = "~C~m/s\n";
+const char cs1[] PROGMEM = "~C~km/h\n";
+const char cs2[] PROGMEM = "~C~mph\n";
+const char cs3[] PROGMEM = "~C~kn\n";
+const char cs4[] PROGMEM = "~C~ft/s\n";
+const char cs5[] PROGMEM = "~C~cm/s\n";
+
+const char* const CONV_SPEED_LINES[] PROGMEM = { cs0, cs1, cs2, cs3, cs4, cs5 };
+const size_t CONV_SPEED_COUNT = sizeof(CONV_SPEED_LINES)/sizeof(CONV_SPEED_LINES[0]);
+#pragma endregion
+#pragma region convPressure
+const char cp0[] PROGMEM = "~C~Pa\n";
+const char cp1[] PROGMEM = "~C~kPa\n";
+const char cp2[] PROGMEM = "~C~MPa\n";
+const char cp3[] PROGMEM = "~C~bar\n";
+const char cp4[] PROGMEM = "~C~atm\n";
+const char cp5[] PROGMEM = "~C~Torr\n";
+const char cp6[] PROGMEM = "~C~psi\n";
+
+const char* const CONV_PRESSURE_LINES[] PROGMEM = { cp0, cp1, cp2, cp3, cp4, cp5, cp6 };
+const size_t CONV_PRESSURE_COUNT = sizeof(CONV_PRESSURE_LINES)/sizeof(CONV_PRESSURE_LINES[0]);
+#pragma endregion
+#pragma region convData
+const char cd0[]  PROGMEM = "~C~bit\n";
+const char cd1[]  PROGMEM = "~C~B\n";
+const char cd2[]  PROGMEM = "~C~kB\n";
+const char cd3[]  PROGMEM = "~C~MB\n";
+const char cd4[]  PROGMEM = "~C~GB\n";
+const char cd5[]  PROGMEM = "~C~TB\n";
+const char cd6[]  PROGMEM = "~C~KiB\n";
+const char cd7[]  PROGMEM = "~C~MiB\n";
+const char cd8[]  PROGMEM = "~C~GiB\n";
+const char cd9[]  PROGMEM = "~C~TiB\n";
+
+const char* const CONV_DATA_LINES[] PROGMEM = {
+  cd0, cd1, cd2, cd3, cd4, cd5, cd6, cd7, cd8, cd9
+};
+const size_t CONV_DATA_COUNT = sizeof(CONV_DATA_LINES)/sizeof(CONV_DATA_LINES[0]);
+#pragma endregion
+#pragma region convAngle
+const char caa0[] PROGMEM = "~C~rad\n";
+const char caa1[] PROGMEM = "~C~°\n";
+const char caa2[] PROGMEM = "~C~gon\n";
+const char caa3[] PROGMEM = "~C~arcmin\n";
+const char caa4[] PROGMEM = "~C~arcsec\n";
+const char caa5[] PROGMEM = "~C~rev\n";
+const char caa6[] PROGMEM = "~C~mrad\n";
+
+const char* const CONV_ANGLE_LINES[] PROGMEM = { caa0, caa1, caa2, caa3, caa4, caa5, caa6 };
+const size_t CONV_ANGLE_COUNT = sizeof(CONV_ANGLE_LINES)/sizeof(CONV_ANGLE_LINES[0]);
+#pragma endregion
+#pragma region convTime
+
+const char cti0[] PROGMEM = "~C~s\n";
+const char cti1[] PROGMEM = "~C~ms\n";
+const char cti2[] PROGMEM = "~C~µs\n";
+const char cti3[] PROGMEM = "~C~ns\n";
+const char cti4[] PROGMEM = "~C~min\n";
+const char cti5[] PROGMEM = "~C~h\n";
+const char cti6[] PROGMEM = "~C~d\n";
+const char cti7[] PROGMEM = "~C~wk\n";
+const char cti8[] PROGMEM = "~C~yr\n";
+
+const char* const CONV_TIME_LINES[] PROGMEM = {
+  cti0, cti1, cti2, cti3, cti4, cti5, cti6, cti7, cti8
+};
+
+const size_t CONV_TIME_COUNT = sizeof(CONV_TIME_LINES) / sizeof(CONV_TIME_LINES[0]);
+
+#pragma endregion
+#pragma region convPower
+
+const char cpo0[] PROGMEM = "~C~W\n";
+const char cpo1[] PROGMEM = "~C~kW\n";
+const char cpo2[] PROGMEM = "~C~MW\n";
+const char cpo3[] PROGMEM = "~C~hp\n";
+const char cpo4[] PROGMEM = "~C~erg/s\n";
+
+const char* const CONV_POWER_LINES[] PROGMEM = {
+  cpo0, cpo1, cpo2, cpo3, cpo4
+};
+
+const size_t CONV_POWER_COUNT = sizeof(CONV_POWER_LINES) / sizeof(CONV_POWER_LINES[0]);
+
+#pragma endregion
+#pragma region convForce
+
+const char cf0[] PROGMEM = "~C~N\n";
+const char cf1[] PROGMEM = "~C~dyn\n";
+const char cf2[] PROGMEM = "~C~kgf\n";
+const char cf3[] PROGMEM = "~C~lbf\n";
+const char cf4[] PROGMEM = "~C~ozf\n";
+
+const char* const CONV_FORCE_LINES[] PROGMEM = {
+  cf0, cf1, cf2, cf3, cf4
+};
+
+const size_t CONV_FORCE_COUNT = sizeof(CONV_FORCE_LINES) / sizeof(CONV_FORCE_LINES[0]);
+
+#pragma endregion
+#pragma region convFrequency
+
+const char cfq0[] PROGMEM = "~C~Hz\n";
+const char cfq1[] PROGMEM = "~C~kHz\n";
+const char cfq2[] PROGMEM = "~C~MHz\n";
+const char cfq3[] PROGMEM = "~C~GHz\n";
+const char cfq4[] PROGMEM = "~C~rpm\n";
+
+const char* const CONV_FREQUENCY_LINES[] PROGMEM = {
+  cfq0, cfq1, cfq2, cfq3, cfq4
+};
+
+const size_t CONV_FREQUENCY_COUNT = sizeof(CONV_FREQUENCY_LINES) / sizeof(CONV_FREQUENCY_LINES[0]);
+
+#pragma endregion
+#pragma endregion
+
+///////////////////////////// HELPER FUNCTIONS
+// CONFRIM TOKEN IS A NUMBER
+inline bool isNumberToken(const String& token) {
+    if (token.isEmpty()) return false;
+    size_t start = 0;
+    // check value after unary negative operators
+    if (token[0] == '-') {
+        start = 1;
+        if (token.length() == 1) return false;
+    }
+    bool hasDecimal = false;
+    // check if float is valid (no trailing '.' + no alpha)
+    for (size_t i = start; i < token.length(); i++) {
+        if (token[i] == '.') {
+            if (hasDecimal) return false;
+            hasDecimal = true;
+            // check for back '.'
+            if (i == token.length() - 1) {
+                return false; // "." at end
+            }
+        }
+        else if (token[i] != '.' && !isDigit(token[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+// CONFIRM TOKEN IS A FUNCTION
+inline bool isFunctionToken(const String& token) {
+  for (size_t i=0;i<functionsCalcCount;++i) {
+    if (token == functionsCalc[i]) return true;
+  }
+  return false;
+}
+// CONFIRM A TOKEN IS A VARIABLE INCLUDING CONSTANTS
+inline bool isVariableToken(const String& token) {
+    if (token.isEmpty()) return false;
+    // exclude constants and functions
+    if (isConstantToken(token)) return false;
+    if (isFunctionToken(token)) return false;
+
+    // check if alphanumeric starting with alpha 
+    if (!isAlpha(token[0])) return false;
+    for (size_t i = 1; i < token.length(); i++) {
+        if (!isAlphaNumeric(token[i])) return false;
+    }
+    return true;
+}
+// COMPARE TO SET OF CONSTANTS
+inline bool isConstantToken(const String& token) {
+  for (size_t i=0;i<constantsCalcCount;++i) {
+    if (token == constantsCalc[i]) return true;
+  }
+  return false;
+}
+// COMPARE TO SET OF OPERATORS
+static inline bool isOperatorToken(const String& token) {
+  for (size_t i=0;i<OPS_N;++i) if (token.equals(OPS[i].token)) return true;
+  return false;
+}
+// CHECK OPERATOR PRECEDENCE
+static inline uint8_t precedenceOfToken(const String& token) {
+  for (size_t i=0;i<OPS_N;++i) if (token.equals(OPS[i].token)) return OPS[i].prec;
+  return 0;
+}
+// CHECK OPERATOR RIGHT ASSOCIATIVITY
+static inline bool isRightAssociative(const String& token) {
+  for (size_t i=0;i<OPS_N;++i) if (token.equals(OPS[i].token)) return OPS[i].rightAssoc;
+  return false;
+}
+// CONVERT TRIG INPUTS
+inline double convertTrig(double input,int trigType,bool reverse){
+  switch (trigType){
+    // 0 = degree mode
+    case (0):
+      return reverse? ((input*180)/PI) : ((input*PI)/180);
+    break;
+    // 1 = radian mode
+    case (1):
+      return input;
+    break;
+    // 2 = grad mode
+    case (2):
+      return reverse? ((input*200)/PI) : ((input*PI)/200);
+    break;
+    default:
+      return input;
+    break;
+  }
+}
+// CONVERT UNITA TO UNITB
+inline double convert(double value,const Unit* from,const Unit* to) {
+    // convert to 
+    double inBase = (value + from->offset) * from->factor;
+    return (inBase / to->factor) - to->offset;
+}
+// UPDATE CURRENT FRAME SCROLL
+inline void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset){
+  int scroll, prev;
+  
+  if (reset){
+    currentFrameState->scroll = 0;
+    currentFrameState->prevScroll = -1;
+
+  } else {
+    currentFrameState->scroll = currentScroll;
+    currentFrameState->prevScroll = prevScroll;
+  }
+  if (currentFrameChoice != CurrentFrameState->scroll){
+    
+    currentFrameChoice = CurrentFrameState->scroll;
+  }
+  return;
+}
+// ADD LINE TO CALCLINES
+inline void calcAppend(const String& s, bool right, bool center) {
+  uint8_t f = right ? LF_RIGHT : center ? LF_CENTER : LF_NONE;
+  calcLines.pushLine(s.c_str(), (uint16_t)s.length(), f);
+}
+// GET UNIT FROM CURRENT UNIT TYPES
+const Unit* getUnit(const String& sym) {
+  const UnitSet* s = CurrentUnitSet;
+  for (size_t i = 0; i < s->size; ++i) {
+    // compare case-insensitively to handle "m^2" vs "M^2"
+    Serial.println("Searching set index " + String(i));
+    Serial.println("syn =  " + sym + "  s->data[i].symbol = " + String(s->data[i].symbol));
+    if (sym.equalsIgnoreCase(s->data[i].symbol)) {
+      Serial.println("Found match! " + String(i));
+      return &s->data[i];
+    }
+  }
+  return nullptr;
+}
+// UPDATE UNIT FROM FRAME CHOICE
+void selectUnitType(int idx) {
+  //Serial.println("Applying selected Unit at idk " + String(idx));
+  // clamp to known catalog size
+  if (idx < 0) idx = 0;
+  if ((size_t)idx >= (UnitCatalogCount)) {
+    idx = UnitCatalogCount - 1;
+  }
+  CurrentUnitSet = &UnitCatalog[idx];
+  // pair the visual list with the same index; guard if not defined yet
+  if ((size_t)idx < (AllUnitListsCount) && allUnitLists[idx]) {
+    CurrentUnitListSrc = allUnitLists[idx];
+  }
+  // point the visible frames at the new list, reset scroll/choice
+  conversionFrameA.source = CurrentUnitListSrc;
+  conversionFrameB.source = CurrentUnitListSrc;
+  conversionFrameA.scroll = conversionFrameB.scroll = 0;
+  conversionFrameA.prevScroll = conversionFrameB.prevScroll = -1;
+  conversionFrameA.choice = conversionFrameB.choice = 0;
+}
 
 ///////////////////////////// MAIN FUNCTIONS
 // CALC INITIALIZETION
 void CALC_INIT() {
   // open calc
   CurrentAppState = CALC;
-  CurrentCALCState = CALC0;
   CurrentKBState = FUNC;
   CurrentFrameState = &calcScreen;
   frames.push_back(&calcScreen);
+  // not clean, relying on magic number 11 since the frame hasn't been drawn with EinkFrameDynamic
+  helpScreen.scroll = gHelpSrc.size() - 11;
+  conversionFrameA.extendedBottom = FRAME_BOTTOM + 8;
+  conversionFrameB.extendedBottom = FRAME_BOTTOM + 8;
+  conversionUnit.extendedBottom = FRAME_BOTTOM + 64;
+  conversionDirection.choice = 0;
   conversionFrameA.choice = 0;
   conversionFrameB.choice = 0;
+  conversionUnit.choice = 0;
+  currentFrameChoice = conversionUnit.choice;
+
   dynamicScroll = 0;
   prev_dynamicScroll = -1;
   lastTouch = -1;
@@ -49,7 +598,7 @@ void processKB_CALC() {
 
     setTXTFont(currentFont);
     // update scroll (calc specific function,could be abstracted to processSB_CALC())
-    updateScrollFromTouch_Calc();
+    updateScrollFromTouch_Frame();
     
     switch (CurrentCALCState) {
 
@@ -70,7 +619,7 @@ void processKB_CALC() {
         }
         else if (inchar == ','){
           if (currentLine.endsWith(",")){
-            Serial.println("Performed character replacement for ',,' ");
+            //Serial.println("Performed character replacement for ',,' ");
             currentLine[currentLine.length()-1] = '.';
           } else {
             currentLine += ",";
@@ -78,7 +627,9 @@ void processKB_CALC() {
         }
         // TAB Recieved (switch unit types aka length to area)
         else if (inchar == 9 || inchar == 14) {    
-                        
+          conversionDirection.choice == 1 ? conversionDirection.choice = 0 :conversionDirection.choice= 1;
+          newLineAdded = true;
+          Serial.println("adjusting convDir to : " + String(conversionDirection.choice));
         }                                      
         // SHIFT Recieved
         else if (inchar == 17) {                                  
@@ -93,27 +644,26 @@ void processKB_CALC() {
         // Space Recieved
         else if (inchar == 32) {                                  
           if (CurrentFrameState != &conversionScreen){
-            CurrentFrameState->bottom = FRAME_BOTTOM + 96;
+            CurrentFrameState->bottom = CurrentFrameState->originalBottom;
             CurrentFrameState = &conversionScreen;
             dynamicScroll = CurrentFrameState->scroll;
-            prev_dynamicScroll = -1;
-
-            calcSwitchedStates = 1;
+            prev_dynamicScroll = CurrentFrameState->prevScroll;
             newLineAdded = true;
           } 
         }
         // CR Recieved
         else if (inchar == 13) {    
-          calcCRInput();                      
+          Serial.println(" current direction is " + String(conversionDirection.choice));
+          calcCRInput(); // existing behavior                      
         }
         // ESC / CLEAR Recieved
         else if (inchar == 20) {   
           if (CurrentFrameState == &conversionScreen){                               
-            CurrentFrameState->lines->clear();
+            calcClear();
             currentLine = "";
             oledWord("Clearing...");
             drawCalc();
-            Serial.println("In CALC3 Mode calling frames");
+            //Serial.println("In CALC3 Mode calling frames");
             einkTextFramesDynamic(frames,false,false);
             display.refresh();
             delay(300);
@@ -122,29 +672,27 @@ void processKB_CALC() {
         // LEFT (scroll up)
         else if (inchar == 19 || inchar == 5) {
           if (CurrentFrameState != &conversionFrameA){
+            CurrentFrameState->bottom = CurrentFrameState->originalBottom;
             CurrentFrameState = &conversionFrameA;
             dynamicScroll = CurrentFrameState->scroll;
-            prev_dynamicScroll = -1;
-            conversionFrameA.bottom = FRAME_BOTTOM + 8;
-            conversionFrameB.bottom = FRAME_BOTTOM + 96;
+            prev_dynamicScroll = CurrentFrameState->prevScroll;
 
-            calcSwitchedStates = 1;
+            CurrentFrameState->bottom = CurrentFrameState->extendedBottom;
+
             newLineAdded = true;
-          }
-          newLineAdded = true; 
-          updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);                         
+          }           
         }
         // RIGHT (switch to conversion a tab or scroll down in tab)
         else if (inchar == 21 || inchar == 6) { 
           if (CurrentFrameState != &conversionFrameB){
+            CurrentFrameState->bottom = CurrentFrameState->originalBottom;
             CurrentFrameState = &conversionFrameB;
             dynamicScroll = CurrentFrameState->scroll;
-            prev_dynamicScroll = -1;
-            conversionFrameA.bottom = FRAME_BOTTOM + 96;
-            conversionFrameB.bottom = FRAME_BOTTOM + 8;
-            calcSwitchedStates = 1;
+            prev_dynamicScroll = CurrentFrameState->prevScroll;
+
+            CurrentFrameState->bottom = CurrentFrameState->extendedBottom;
             newLineAdded = true;
-          }
+          } 
         }
         //BKSP Recieved
         else if (inchar == 8) {    
@@ -158,6 +706,14 @@ void processKB_CALC() {
         else if (inchar == 5) {}
         //FILE Recieved (switch to unit types tab)
         else if (inchar == 7) {
+          if (CurrentFrameState != &conversionUnit){
+            CurrentFrameState->bottom = CurrentFrameState->originalBottom;
+            CurrentFrameState = &conversionUnit;
+            CurrentFrameState->bottom = CurrentFrameState->extendedBottom;
+            dynamicScroll = CurrentFrameState->scroll;
+            prev_dynamicScroll = CurrentFrameState->prevScroll;
+            newLineAdded = true;
+          } 
         }
         // Font Switcher (regular tab also starts the font switcher)
         else if (inchar == 14) {                                  
@@ -179,10 +735,17 @@ void processKB_CALC() {
             if (prev_dynamicScroll != dynamicScroll) prev_dynamicScroll = dynamicScroll;
             updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
           }
-          else oledScrollCalc();
+          else oledScrollFrame();
         }
         break;
-
+      // HELP MODE (no need inputs)
+      case CALC4:
+          // CR Recieved
+          if (inchar == 13) {
+            currentLine = "/0";    
+            calcCRInput();   
+            break;
+          }   
       // PROGRAMMING MODE (not implemented)
       case CALC1:
 
@@ -206,7 +769,7 @@ void processKB_CALC() {
         }
         else if (inchar == ','){
           if (currentLine.endsWith(",")){
-            Serial.println("Performed character replacement for ',,' ");
+            //Serial.println("Performed character replacement for ',,' ");
             currentLine[currentLine.length()-1] = '.';
           } else {
             currentLine += ",";
@@ -238,7 +801,7 @@ void processKB_CALC() {
         }
         // ESC / CLEAR Recieved
         else if (inchar == 20) {                                  
-          CurrentFrameState->lines->clear();
+          calcClear();
           currentLine = "";
           oledWord("Clearing...");
           drawCalc();
@@ -248,13 +811,13 @@ void processKB_CALC() {
         }
         // LEFT (scroll up)
         else if (inchar == 19 || inchar == 5) {
-          if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_MAX)){
+          if (dynamicScroll < CurrentFrameState->source->size() - (9 + SCROLL_MAX)){
              dynamicScroll += SCROLL_MAX;
-          } else if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_MED)){
+          } else if (dynamicScroll < CurrentFrameState->source->size() - (9 + SCROLL_MED)){
              dynamicScroll += SCROLL_MED;
-          } else if (dynamicScroll < CurrentFrameState->lines->size() - (9 + SCROLL_SML)){
+          } else if (dynamicScroll < CurrentFrameState->source->size() - (9 + SCROLL_SML)){
              dynamicScroll += SCROLL_SML;
-          } else if (dynamicScroll < CurrentFrameState->lines->size() - 10) {
+          } else if (dynamicScroll < CurrentFrameState->source->size() - 10) {
             dynamicScroll++;
           }
           newLineAdded = true; 
@@ -287,7 +850,7 @@ void processKB_CALC() {
         else if (inchar == 5) {}
         //FILE Recieved 
         else if (inchar == 7) {
-          CurrentFrameState->lines->clear();
+          calcClear();
           currentLine = "";
           oledWord("Clearing...");
           drawCalc();
@@ -317,12 +880,10 @@ void processKB_CALC() {
             if (prev_dynamicScroll != dynamicScroll) prev_dynamicScroll = dynamicScroll;
             updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
           }
-          else oledScrollCalc();
+          else oledScrollFrame();
         }
         break;
-      // HELP MODE (no need inputs)
-      case CALC4:
-        break;
+
       // FONT SWITCHER
       case CALCFONT:
         //No char recieved
@@ -377,15 +938,15 @@ void processKB_CALC() {
           newLineAdded = true;
           currentWord = "";
           currentLine = "";
-          //STORE ALLLINES IN TEMP BEFORE REFRESHING SCREEN TO AVOID DRAWING MULTIPLE FONTS
-          std::vector<String> tempLines = *(CurrentFrameState->lines);
-          CurrentFrameState->lines->clear();
+      
+          calcClear();
 
           // REFRESH SCREEN
+
           refresh();
           drawCalc();
-          *(CurrentFrameState->lines) = tempLines;
           einkTextFramesDynamic(frames,true,false);
+
         }
         currentMillis = millis();
         //Make sure oled only updates at 60fps
@@ -405,16 +966,40 @@ void einkHandler_CALC() {
     // reset eink screen if returning from a new mode
     if (calcSwitchedStates == 1){
       calcSwitchedStates = 0;
-      if (CurrentCALCState != CALC3)  {
-          doFull = 1;
-          frames.clear();
-          frames.push_back(&calcScreen);
-          drawCalc();
-          einkTextFramesDynamic(frames,true,false);
+      doFull = 1;
+      frames.clear();
+      if (CurrentCALCState != CALC3 && CurrentCALCState != CALC4)  {   
+        conversionFrameA.bottom = conversionFrameA.originalBottom;
+        conversionFrameB.bottom = conversionFrameB.originalBottom;
+        frames.push_back(&calcScreen);
+        CurrentFrameState = &calcScreen;
       } else {
-          einkTextFramesDynamic(frames,false,true);
-      }
+        doFull = 1;
+        frames.clear();
+        if (CurrentCALCState == CALC3){
+          frames.push_back(&conversionScreen);
+          frames.push_back(&conversionFrameA);
+          frames.push_back(&conversionFrameB);
+          frames.push_back(&conversionDirection);
+          frames.push_back(&conversionUnit);
+          CurrentFrameState = &conversionScreen;
+          CurrentFrameState->scroll = 0;
+          CurrentFrameState->prevScroll = -1;
+        } else {
+          frames.clear();
 
+          currentFont = &FreeMonoBold9pt7b;
+          setTXTFont(currentFont);
+          frames.push_back(&helpScreen);
+          CurrentFrameState = &helpScreen;
+          dynamicScroll = helpScreen.scroll;
+          updateScroll(CurrentFrameState, prev_dynamicScroll, dynamicScroll);
+          prev_dynamicScroll = -1;
+        }
+      }
+      drawCalc();
+      newLineAdded = true;
+      einkTextFramesDynamic(frames,true,false);
       
     } else {
       switch (CurrentCALCState) {
@@ -469,7 +1054,7 @@ void einkHandler_CALC() {
           //conversions 
           if (newState && doFull) { 
             drawCalc();
-                      Serial.println("In CALC3 Mode calling frames");
+            //Serial.println("In CALC3 Mode calling frames");
             einkTextFramesDynamic(frames,true,false);
             //refresh();
             doFull = false;
@@ -478,11 +1063,11 @@ void einkHandler_CALC() {
             if (refresh_count > REFRESH_MAX_CALC){
               drawCalc(); 
               setFastFullRefresh(false);
-                        Serial.println("In CALC3 Mode calling frames");
+              //Serial.println("In CALC3 Mode calling frames");
               einkTextFramesDynamic(frames,true,false);
               refresh_count = 0;
             } else {
-                        Serial.println("In CALC3 Mode calling frames");
+              //Serial.println("In CALC3 Mode calling frames");
               einkTextFramesDynamic(frames,true,false);
             }
             setFastFullRefresh(true);
@@ -491,20 +1076,26 @@ void einkHandler_CALC() {
           }
           break;
         case CALC4:
-          //help mode
-          currentFont = &FreeMonoBold9pt7b;
-          CurrentFrameState = &helpScreen;
-          setTXTFont(currentFont);
-          // print out everything needed to understand basics of program, might be memory inefficient, remove or rector
-          CurrentFrameState->lines->clear();
-          // potentially store helpText in SD card
-          CurrentFrameState->lines->insert(CurrentFrameState->lines->end(), helpText.begin(), helpText.end());
-          dynamicScroll = (CurrentFrameState->lines->size() - 11);
-          updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
-          drawCalc(); 
-          einkTextFramesDynamic(frames,true,false);
-          calcSwitchedStates = true;
-          setFastFullRefresh(false);
+          // help mode
+          if (newState && doFull) { 
+            drawCalc();
+            einkTextFramesDynamic(frames,true,false);
+            //refresh();
+            doFull = false;
+          } else if (newLineAdded && !newState) {
+            refresh_count++;
+            if (refresh_count > REFRESH_MAX_CALC){
+              drawCalc(); 
+              setFastFullRefresh(false);
+              einkTextFramesDynamic(frames,true,false);
+              refresh_count = 0;
+            } else {
+              einkTextFramesDynamic(frames,true,false);
+            }
+            setFastFullRefresh(true);
+          } else if (newState && !newLineAdded) {
+            drawCalc();
+          }
           break;
         case CALCFONT:
           display.firstPage();
@@ -537,69 +1128,7 @@ void einkHandler_CALC() {
     }
     newState = false;
     newLineAdded = false;
-    if ( CurrentCALCState == CALC4) {
-      calcSwitchedStates = 1;
-      CurrentCALCState = CALC0;
-    }
   }
-}
-
-///////////////////////////// CALC SCROLL FUNCTIONS
-// could be abstracted to a processSB_Calc function with an interface set up for every app
-void updateScrollFromTouch_Calc() {
-  uint16_t touched = cap.touched();  // Read touch state
-  int newTouch = -1;
-  // Find the first active touch point (lowest index first)
-  for (int i = 0; i < 3; i++) {
-    if (touched & (1 << i)) {
-      newTouch = i;
-      Serial.print("Prev pad: ");
-      Serial.print(lastTouch);
-      Serial.print("   Touched pad: ");
-      Serial.println(newTouch);
-      break;
-    }
-  }
-
-  unsigned long currentTime = millis();
-  
-  if (newTouch != -1) {  // If a touch is detected
-    if (lastTouch != -1) {  // Compare with previous touch
-      int touchDelta = abs(newTouch - lastTouch);
-      if (touchDelta < 2) {  // Ignore large jumps (adjust threshold if needed)
-        int maxScroll = max(0, (int)CurrentFrameState->lines->size() - 1);  // Ensure a valid scroll range
-        dynamicScroll = CurrentFrameState->scroll;
-        if (newTouch > lastTouch) {
-          dynamicScroll = min((int)(dynamicScroll + 1), maxScroll);
-
-        } else if (newTouch < lastTouch) {
-          dynamicScroll = max((int)(dynamicScroll - 1), 0);
-        }
-        Serial.println("updating scroll to: " + String(dynamicScroll));
-        Serial.println("max scroll is = " + String((int)CurrentFrameState->lines->size()));
-        if (CurrentFrameState->choice != -1){
-          CurrentFrameState->choice = dynamicScroll;
-          CurrentFrameState->unitA = getUnit((*CurrentFrameState->lines)[CurrentFrameState->choice]);
-        }
-        updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
-      }
-    }
-    lastTouch = newTouch;  // Always update lastTouch
-    lastTouchTime = currentTime;  // Reset timeout timer
-  } 
-  else if (lastTouch != -1) {
-    if (currentTime - lastTouchTime > TOUCH_TIMEOUT_MS) {
-        lastTouch = -1;
-        if (prev_dynamicScroll != dynamicScroll) {
-            newLineAdded = true;
-            prev_dynamicScroll = dynamicScroll; // Update comparison value
-            updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
-
-        }
-    }
-  }
-
-    //Serial.println("update scroll has finished!");
 }
 
 ///////////////////////////// CALC EINK FUNCTIONS
@@ -630,94 +1159,9 @@ void closeCalc(AppState newAppState){
   }
 }
 
-///////////////////////////// CALC OLED FUNCTIONS
-// calc specific oled
-// modified from oledScroll
-// modifications:
-//     removed tab drawing if line starts with "   " since all answers are right aligned
-void oledScrollCalc() {
-  // CLEAR DISPLAY
-u8g2.clearBuffer();
-if (CurrentCALCState != CALC3){}
-// draw background
-u8g2.drawXBMP(0, 0, 128, 32, scrolloled0);
-  // draw lines preview
-  long int count = CurrentFrameState->lines->size();
-  long startIndex, endIndex;
-  getVisibleRange(CurrentFrameState, count, startIndex, endIndex);
-
-    // Decide how many preview lines to show
-  long previewTop = max(0L, endIndex - CurrentFrameState->scroll - CurrentFrameState->maxLines);
-  long previewBottom= endIndex - 1; // index of newest visible line (may be < 0)
-  const int rowStep = 4;    
-  const int baseY   = 28; 
-
-  for (long int i = previewBottom; i >= previewTop && i >= 0;  --i) {
-    if (i < 0 || i >= count) continue;  // Ensure i is within bounds
-
-    int16_t x1, y1;
-    uint16_t charWidth, charHeight;
-    String line = (*(CurrentFrameState->lines))[i];
-
-    // measure width (same as you did)
-    if (line.startsWith("    ")) {
-      display.getTextBounds(line.substring(4), 0, 0, &x1, &y1, &charWidth, &charHeight);
-      int lineWidth = map(charWidth, 0, 320, 0, 49);
-      lineWidth = constrain(lineWidth, 0, 49);
-
-      // compute Y based on distance from newest visible line
-      long posFromBottom = previewBottom - i; // 0 = newest
-      int boxY = baseY - (rowStep * posFromBottom);
-      if (boxY >= 0) {
-        // you removed the tab box drawing originally; uncomment if you want it:
-        // u8g2.drawBox(68, boxY, lineWidth, 2);
-      }
-    } else {
-      display.getTextBounds(line, 0, 0, &x1, &y1, &charWidth, &charHeight);
-      int lineWidth = map(charWidth, 0, 320, 0, 56);
-      lineWidth = constrain(lineWidth, 0, 56);
-
-      long posFromBottom = previewBottom - i; // 0 = newest
-      int boxY = baseY - (rowStep * posFromBottom);
-      if (boxY >= 0) {
-        u8g2.drawBox(61, boxY, lineWidth, 2);
-      }
-    }
-  }
-  long displayedLinesStart = startIndex + 1;
-  long displayedLinesEnd   = endIndex; // endLine is one-past-last, so this already matches 1-based inclusive end
-  if (count == 0) {
-    displayedLinesStart = 0;
-    displayedLinesEnd  = 0;
-  }
-  if (CurrentCALCState == CALC3 && (CurrentFrameState->choice != -1)){
-    // print preview of the newest visible line (bottom of visible window)
-    String pLine = (*(CurrentFrameState->lines))[CurrentFrameState->scroll];
-    if (pLine.length() > 0) {
-    u8g2.setFont(u8g2_font_ncenB10_tr);
-      // draw preview text on the right half of the OLED so it fits
-    u8g2.drawStr(0, 24, pLine.substring(3).c_str());
-    }
-
-  } else {
-    // print current line
-    u8g2.setFont(u8g2_font_ncenB08_tr);
-    String lineNumStr = String(count - CurrentFrameState->scroll) + "/" + String(count);
-    u8g2.drawStr(0, 12, "Lines:");
-    u8g2.drawStr(0, 24, lineNumStr.c_str());
-  }
-
-
-
-
-
-  // send buffer
-  u8g2.sendBuffer();
-}
-
 ///////////////////////////// ALGORITHMS
 // FORMAT INTO RPN,EVALUATE,SAVE
-int calculate(const String& cleanedInput,String &result,Unit *convA,Unit *convB){
+int calculate(const String& cleanedInput,String &result,const Unit *convA,const Unit *convB){
   // convert to reverse polish notation for easy calculation
   std::deque<String> inputRPN = convertToRPN(cleanedInput);
   // calculate the RPN expression
@@ -764,10 +1208,10 @@ std::deque<String> convertToRPN(String expression) {
         else if (isAlpha(token[0]) && token != "E") {
           if (i + 1 < tokens.size() && tokens[i+1] == ":") {
               // For assignment, push variable name marker to output
-              Serial.println("pushed ~var~ + variable!");
+              //Serial.println("pushed ~var~ + variable!");
               outputQueue.push_back("~var~" + token);
           } else {
-              Serial.println("pushed variable!");
+              //Serial.println("pushed variable!");
               outputQueue.push_back(token);
           }
         }
@@ -786,36 +1230,48 @@ std::deque<String> convertToRPN(String expression) {
               operatorStack.pop();
           }
         } 
+        /*
         if ((token == "~neg~")) {
           if ((i+1) < tokens.size()){
-            Serial.println("pushed unary negation! RPN");
+            //Serial.println("pushed unary negation! RPN");
             operatorStack.push(String(-1*variables[tokens[i+1]]));
           }
 
           i++;
           continue;
         }
+        */
         // sort operators by precedence, push all operators of greater precedence to the output queue and place new operator in operator stack
         else if (isOperatorToken(token)) {
-          // Handle assignment '='
+          // assignment guard stays the same...
           if (token == ":") {
-              // The variable should be the previous token in the original expression
-              if (outputQueue.empty()) {
-                return {}; 
-              }
-              String prev = outputQueue.back();
-              if (!isVariableToken(prev)) {
-                return {}; 
-              }
+            if (outputQueue.empty()) return {};
+            const String& prev = outputQueue.back();
+            // after the refactor, the variable is emitted as "~var~name"
+            if (!prev.startsWith("~var~")) return {};
           }
-          while (!operatorStack.empty() &&
-                operatorStack.top() != "(" &&
-                precedenceCalc[operatorStack.top()] >= precedenceCalc[token]) {
-              outputQueue.push_back(operatorStack.top());
-              operatorStack.pop();
+
+          const bool rightA = isRightAssociative(token);
+          const uint8_t p1 = precedenceOfToken(token);
+
+          while (!operatorStack.empty()
+                && operatorStack.top() != "(")
+          {
+            const String& o2 = operatorStack.top();
+            if (!isOperatorToken(o2)) break;
+
+            const uint8_t p2 = precedenceOfToken(o2);
+            const bool popIt =
+              (!rightA && (p1 <= p2)) ||   // left-assoc: pop while prec <=
+              ( rightA && (p1 <  p2));     // right-assoc: pop while prec <
+            if (!popIt) break;
+
+            outputQueue.push_back(o2);
+            operatorStack.pop();
           }
+
           operatorStack.push(token);
-      }
+        }
     }
     // empty rest of operator stack
     while (!operatorStack.empty()) {
@@ -832,10 +1288,10 @@ std::vector<String> tokenize(const String& expression) {
     std::vector<String> tokens;
     String currentToken = "";
     bool usedRepeatFunction = false;
-    Serial.println("Tokenizing expression: " + expression);
+    //Serial.println("Tokenizing expression: " + expression);
     for (int i = 0; i < expression.length(); ++i) {
       char c = expression[i];
-      Serial.println("handling character: " + String(c));   
+      //Serial.println("handling character: " + String(c));   
       // Handle assignment '='
       if (c == ':') {
           // Single '=' for assignment
@@ -852,27 +1308,27 @@ std::vector<String> tokenize(const String& expression) {
 
       if (c == '-' && prevIsOperatorOrStart) {
           if (i + 1 < expression.length() && isDigit(expression[i + 1])) {
-              Serial.println("pushed back negative number");
-              currentToken += c;
-              while (i + 1 < expression.length() &&
-                    (isDigit(expression[i + 1]) || expression[i + 1] == '.')) {
-                  currentToken += expression[++i];
-              }
-              tokens.push_back(currentToken);
-              currentToken = "";
-              continue;
+            //Serial.println("pushed back negative number");
+            currentToken += c;
+            while (i + 1 < expression.length() &&
+                  (isDigit(expression[i + 1]) || expression[i + 1] == '.')) {
+                currentToken += expression[++i];
+            }
+            tokens.push_back(currentToken);
+            currentToken = "";
+            continue;
           } else {
-              Serial.println("pushed back unary minus operator");
-              tokens.push_back("~neg~");
-              continue;
+            //Serial.println("pushed back unary minus operator");
+            tokens.push_back("~neg~");
+            continue;
           }
       }
       // handle !! macro
       if (!usedRepeatFunction && c == '!' && i + 1 < expression.length() && expression[i + 1] == '!') {
           if (prevTokens.empty()) {
-              oledWord("E: no previous expression");
-              delay(1000);
-              return {};
+            oledWord("E: no previous expression");
+            delay(1000);
+            return {};
           }
 
           usedRepeatFunction = true;
@@ -888,7 +1344,7 @@ std::vector<String> tokenize(const String& expression) {
             
       // Handle numbers
       if (isDigit(c) || (c == '.' && i + 1 < expression.length() && isDigit(expression[i + 1]))) {
-          Serial.println("handling" + currentToken);
+          //Serial.println("handling" + currentToken);
           currentToken += c;
           while (i + 1 < expression.length()) {
               char peek = expression[i + 1];
@@ -899,7 +1355,7 @@ std::vector<String> tokenize(const String& expression) {
               }
           }
 
-          Serial.println("Pushing number " + String(currentToken));
+          //Serial.println("Pushing number " + String(currentToken));
           tokens.push_back(currentToken);
           currentToken = "";
           continue;
@@ -962,14 +1418,14 @@ std::vector<String> tokenize(const String& expression) {
     return tokens;
 }
 // EVALUATE RPN
-String evaluateRPN(std::deque<String> rpnQueue,Unit *convA,Unit *convB) {
+String evaluateRPN(std::deque<String> rpnQueue, const Unit *convA, const Unit *convB) {
     std::stack<double> evalStack;
     std::stack<String> varStack;
     // print queue
-    Serial.println("Handling evaluating RPN");
-    for (auto it = rpnQueue.begin(); it != rpnQueue.end(); it++) {
-      Serial.println("eval Token: " + *it);
-    }
+    //Serial.println("Handling evaluating RPN");
+    //for (auto it = rpnQueue.begin(); it != rpnQueue.end(); it++) {
+    //  Serial.println("eval Token: " + *it);
+    //}
     
     while (!rpnQueue.empty()) {
         String token = rpnQueue.front();
@@ -996,9 +1452,10 @@ String evaluateRPN(std::deque<String> rpnQueue,Unit *convA,Unit *convB) {
         else if (token == "e") {
             evalStack.push(EULER);
         // Handle unary negation
-        } else if (token == "~neg~"){
-            String varToNegate = rpnQueue.front(); rpnQueue.pop_front();
-            rpnQueue.push_front(String(-1*variables[varToNegate]));
+        } else if (token == "~neg~") {
+          if (evalStack.empty()) return "E: ~neg~";
+          double a = evalStack.top(); evalStack.pop();
+          evalStack.push(-a);
         } else if (isAlpha(token[0]) && !isFunctionToken(token) && token != "E") {
           if (variables.find(token) != variables.end()) {
               evalStack.push(variables[token]);
@@ -1017,7 +1474,7 @@ String evaluateRPN(std::deque<String> rpnQueue,Unit *convA,Unit *convB) {
             evalStack.push(a + b);
         }
         else if (token == "-") {
-            Serial.println("subtracting!");
+            //Serial.println("subtracting!");
             if (evalStack.size() < 2) return "E: -";
             double b = evalStack.top(); evalStack.pop();
             double a = evalStack.top(); evalStack.pop();
@@ -1328,6 +1785,7 @@ String evaluateRPN(std::deque<String> rpnQueue,Unit *convA,Unit *convB) {
             return "E: Unknown token: " + token;
         }
     }
+
     if (evalStack.size() != 1) {
       oledWord("malformed expression");
       delay(1000);
@@ -1338,11 +1796,11 @@ String evaluateRPN(std::deque<String> rpnQueue,Unit *convA,Unit *convB) {
       double value = evalStack.top();
       variables[varName] = value;
     }
-    Serial.println("exited evaluation RPN function");
+    //Serial.println("exited evaluation RPN function");
     variables["ans"] = evalStack.top();
 
     if ((convA != nullptr) && strcmp(convA->name, convB->name) != 0){
-      Serial.println("converting input!");
+      //Serial.println("converting input!");
       cleanExpression = cleanExpression + convA->symbol;
       return formatNumber(convert(evalStack.top(), convA, convB));
     }
@@ -1357,72 +1815,48 @@ void calcCRInput(){
   currentLine.replace(" ", ""); 
   // parse commands
   if (currentLine != ""){
-    if (currentLine == "!!"){
-      dynamicScroll = 0;
-      updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);     
-      printAnswer(prevLine,&emptyUnit, &emptyUnit);
-    } 
-    else if (currentLine == "/0"){
+    if (currentLine == "/0"){
         // standard mode
         CurrentCALCState = CALC0;
-        CurrentFrameState = &calcScreen;
-        
         calcSwitchedStates = 1;
-        newLineAdded = true;
     }  
     else if (currentLine == "/1"){
         // programming mode
         CurrentCALCState = CALC0;
         oledWord("Programming Mode not implemented"); 
-        CurrentFrameState = &calcScreen;
         calcSwitchedStates = 1;
-        newLineAdded = true;
         delay(1000);
     }
     else if (currentLine == "/2"){
         // scientific mode
         CurrentCALCState = CALC2;
-        CurrentFrameState = &calcScreen;
         calcSwitchedStates = 1;
-        newLineAdded = true;
-
     }
     else if (currentLine == "/3"){
         // conversion
-        display.clearScreen();
         CurrentCALCState = CALC3;
-        drawCalc();
-        frames.clear();
-        frames.push_back(&conversionScreen);
-
-        conversionUnit.scroll = 9;
-        frames.push_back(&conversionFrameA);
-        frames.push_back(&conversionFrameB);
-        frames.push_back(&conversionDirection);
-        frames.push_back(&conversionUnit);
-        CurrentFrameState = &conversionScreen;
-        CurrentFrameState->scroll = 0;
-        CurrentFrameState->prevScroll = -1;
+        calcSwitchedStates = 1;
         newLineAdded = true;
     }
     else if (currentLine == "/4"){
         // help mode
         CurrentCALCState = CALC4;
-        CurrentFrameState = &calcScreen;
-        CurrentFrameState->scroll = 0;
-        CurrentFrameState->prevScroll = -1;
-        CurrentFrameState->lines = &helpText;
-        calcSwitchedStates = 1;
+        Serial.println("helpScreen scroll = " + String(helpScreen.scroll));
+        calcSwitchedStates = true;
+
     }
     else if (currentLine == "/5") {
         // write current file to text
         oledWord("Exporting Data to TXT!");
-        allLines = *(CurrentFrameState->lines);
-        // remvove '~R~' or '~C~' formatting (not used by txt app)
-        for (int i = 0; i < allLines.size();i++){
-          if (!(i%2 == 0)){
+
+        // CHANGED: copy from source into a vector
+        allLines = sourceToVector(CurrentFrameState->source);
+
+        // remove '~R~' or '~C~' formatting (not used by txt app)
+        for (int i = 0; i < allLines.size(); i++) {
+          if (!(i % 2 == 0)) {
             String temp = allLines[i - 1] + " = " + allLines[i].substring(3);
-            allLines[i - 1] =  temp;
+            allLines[i - 1] = temp;
             allLines[i] = "";
           }
         }
@@ -1432,7 +1866,7 @@ void calcCRInput(){
     else if (currentLine == "/6"){
       closeCalc(HOME);
     }
-    else if (currentLine == "/grad"){
+    else if (currentLine == "/gon"){
       trigType = 2;
       drawCalc();
     }
@@ -1448,42 +1882,50 @@ void calcCRInput(){
       // no command, calculate answer
       dynamicScroll = 0;
       updateScroll(CurrentFrameState,prev_dynamicScroll,dynamicScroll);
-      prevLine = currentLine;
-      Serial.println("PrevLine updated to : " + currentLine);
+      // handle only !!
+      currentLine == "!!" ? prevLine : currentLine;
+      //Serial.println("PrevLine updated to : " + currentLine);
       if (CurrentCALCState == CALC3){
-        if (CurrentFrameState == &conversionScreen){
-          String conversionA = (*(conversionFrameA.lines))[conversionFrameA.scroll].substring(3);
-          String conversionB = (*(conversionFrameB.lines))[conversionFrameB.scroll].substring(3);
-          printAnswer(currentLine,getUnit(conversionA),getUnit(conversionB));
-        }
+        conversionFrameA.bottom = conversionFrameA.originalBottom;
+        conversionFrameB.bottom = conversionFrameA.originalBottom;
+        CurrentFrameState = &conversionScreen;
+        String conversionA = frameChoiceString(conversionFrameA);
+        String conversionB = frameChoiceString(conversionFrameB);
+
+        const Unit* convA = getUnit(conversionA);
+        const Unit* convB = getUnit(conversionB);
+
+        conversionDirection.choice == 0 ? printAnswer(currentLine,convA,convB):printAnswer(currentLine,convB,convA);
+        
+
+        
       } else {
         printAnswer(currentLine, &emptyUnit, &emptyUnit);
       }
+      prevLine = currentLine;
     }
   }
   calculatedResult = "";
   currentLine = "";
   newLineAdded = true;
 }
-// CONVERT NUMBER TO FLOAT STRING OR INT STRING
+// CONVERT NUMBER TO FLOAT STRING OR INT STRING !!
 String formatNumber(double value) {
     //Serial.println("formating number " + String(value));
+    // NaN/Inf guards
+    if (isnan(value)) return "nan";
+    if (!isfinite(value)) return value < 0 ? "-inf" : "inf";
     String result;
     char buffer[32];
-    Serial.println("formatting number!");
-    if (CurrentCALCState == CALC3){
-      if (value > INT_MAX || value < INT_MIN) {
-        Serial.println("sending scientifc instead for conversion!");
-        return formatScientific(value);
-      }
-    } 
+    //Serial.println("formatting number!");
     if (CurrentCALCState == CALC2){
       return formatScientific(value);
     } 
     else {
-      // handle overflow
-      if (value > INT_MAX) return "inf";
-      if (value < INT_MIN) return "-inf";
+      if ((value > INT_MAX || ((fabs(value - round(value)) <= 1e-9)&&(fabs(value - round(value)) > 1e-300)))) {
+        //Serial.println("sending scientifc instead for conversion!");
+        return formatScientific(value);
+      }
       // handle integer test case
       if (fabs(value - round(value)) < 1e-9) {
         snprintf(buffer, sizeof(buffer), "%lld", static_cast<long long>(round(value)));
@@ -1491,18 +1933,17 @@ String formatNumber(double value) {
       }
       result = trimValue(value);
     }
-    Serial.println("Returning standard number!");
+    //Serial.println("Returning standard number!");
     return result;
 }
-// CONVERT DOUBLE TO SCIENTIFIC NOTATION
+// CONVERT DOUBLE TO SCIENTIFIC NOTATION !!
 String formatScientific(double value) {
     // handle overflow and underflow edge cases
     if (String(value) == "inf" || String(value) == "-inf") {
-      Serial.println("overflow error");
+      //Serial.println("overflow error");
       return String(value);
     }
-    if (abs(value) < 1e-150) return "0e0";
-
+    if (abs(value) < 1e-300) return "0e0";
     int exponent = 0;
     double mantissa = value;
     bool negative = mantissa < 0;
@@ -1518,19 +1959,17 @@ String formatScientific(double value) {
         exponent--;
     }
     if (negative) mantissa = -mantissa;
-
     result = trimValue(mantissa);
     result += "e" + String(exponent);
     return result;
 }
-// TRIM EXCESS ZEROS
+// TRIM EXCESS ZEROS !!
 String trimValue(double value){
     char buffer[32];
     // Format mantissa with 10 decimals initially
     snprintf(buffer, sizeof(buffer), "%.8f", value);
     String valueStr(buffer);
     int dotPos = valueStr.indexOf('.');
-
     if (dotPos != -1) {
         int lastNonZero = valueStr.length() - 1;
         while (lastNonZero > dotPos && valueStr[lastNonZero] == '0') {
@@ -1544,144 +1983,24 @@ String trimValue(double value){
     }
     return valueStr;
 }
-// CALC DISPLAY ANSWER
-void printAnswer(String cleanExpression,Unit *convA,Unit *convB) {
+// CALC DISPLAY ANSWER !!
+void printAnswer(String cleanExpression,const Unit *convA,const Unit *convB) {
   int16_t x1, y1;
   uint16_t exprWidth, resultWidth, charHeight;
   String resultOutput = "";
-  int maxWidth = display.width() - 40;
+  int maxWidth = display.width();
   int result = calculate(cleanExpression, resultOutput,convA,convB);
 
   // Set font before measuring text
   display.setFont(currentFont);
-  if (CurrentCALCState == CALC3){
-    cleanExpression = cleanExpression + " " + convA->symbol;
-    resultOutput = resultOutput + " " + convB->symbol;
+  if (CurrentCALCState == CALC3 && convA && convB){
+    // Non-breaking space keeps value and unit together during wrapping
+    const char* SP = " ";
+    cleanExpression += String(SP) + convA->symbol;
+    resultOutput    += String(SP) + convB->symbol;
   }
-  // Measure widths
-  display.getTextBounds(cleanExpression, 0, 0, &x1, &y1, &exprWidth, &charHeight);
-  display.getTextBounds(resultOutput, 0, 0, &x1, &y1, &resultWidth, &charHeight);
-
-  // Clip long expressions
-  if (exprWidth > maxWidth) {
-    int mid = cleanExpression.length() / 2;
-    CurrentFrameState->lines->push_back(cleanExpression.substring(0, mid));
-    CurrentFrameState->lines->push_back(cleanExpression.substring(mid));
-    newLineAdded = true;
-  } else {
-    CurrentFrameState->lines->push_back(cleanExpression);
-  }
-  CurrentFrameState->lines->push_back("~R~" + resultOutput); // right-align marker 
+  calcAppend(cleanExpression);
+  calcAppend("~R~" + resultOutput);
+  newLineAdded = true;
 }
 
-///////////////////////////// HELPER FUNCTIONS
-// CONFRIM TOKEN IS A NUMBER
-bool isNumberToken(const String& token) {
-    if (token.isEmpty()) return false;
-    
-    size_t start = 0;
-    // check value after unary negative operators
-    if (token[0] == '-') {
-        start = 1;
-        if (token.length() == 1) return false;
-    }
-    
-    bool hasDecimal = false;
-    // check if float is valid (no trailing '.' + no alpha)
-    for (size_t i = start; i < token.length(); i++) {
-        if (token[i] == '.') {
-            if (hasDecimal) return false;
-            hasDecimal = true;
-            
-            // check for back '.'
-            if (i == token.length() - 1) {
-                return false; // "." at end
-            }
-        }
-        else if (token[i] != '.' && !isDigit(token[i])) {
-            return false;
-        }
-    }
-    return true;
-}
-// CONFRIM TOKEN IS A FUNCTION
-bool isFunctionToken(const String& token) {
-  if (token.isEmpty()) return false;
-  return functionsCalc.count(token) > 0;
-}
-// CONFIRM A TOKEN IS A VARIABLE INCLUDING CONSTANTS
-bool isVariableToken(const String& token) {
-    if (token.isEmpty()) return false;
-    // exclude constants and functions
-    if (isConstantToken(token)) return false;
-    if (isFunctionToken(token)) return false;
-
-    // check if alphanumeric starting with alpha 
-    if (!isAlpha(token[0])) return false;
-    for (size_t i = 1; i < token.length(); i++) {
-        if (!isAlphaNumeric(token[i])) return false;
-    }
-    return true;
-}
-// COMPARE TO SET OF OPERATORS
-bool isOperatorToken(const String& token) {
-    if (token.isEmpty()) return false;
-    return operatorsCalc.count(token) > 0;
-}
-// COMPARE TO SET OF CONSTANTS
-bool isConstantToken(const String& token) {
-      if (token.isEmpty()) return false;
-    return constantsCalc.count(token) > 0;
-}
-// CONVERT TRIG INPUTS
-double convertTrig(double input,int trigType,bool reverse){
-  switch (trigType){
-    // 0 = degree mode
-    case (0):
-      return reverse? ((input*180)/PI) : ((input*PI)/180);
-    break;
-    // 1 = radian mode
-    case (1):
-      return input;
-    break;
-    // 2 = grad mode
-    case (2):
-      return reverse? ((input*200)/PI) : ((input*PI)/200);
-    break;
-    default:
-      return input;
-    break;
-  }
-}
-
-double convert(double value, Unit* from, Unit* to) {
-    // convert to 
-    double inBase = (value + from->offset) * from->factor;
-    return (inBase / to->factor) - to->offset;
-}
-// UPDATE CURRENT FRAME SCROLL
-void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset){
-  int scroll, prev;
-  if (reset){
-    currentFrameState->scroll = currentFrameState->lines->size()  - 11;
-    currentFrameState->prevScroll = -1;
-
-  } else {
-    currentFrameState->scroll = currentScroll;
-    currentFrameState->prevScroll = prevScroll;
-  }
-  return;
-}
-// SEARCH UNITS FOR UNIT WITH MATCHING SYMBOL
-Unit* getUnit(const String& key) {
-    for (size_t i = 0; i < lengthUnits.size(); ++i) {
-        Unit& u = (Unit&)lengthUnits[i];
-        String trimmedKey = key;
-        trimmedKey.trim();
-        if (trimmedKey.equals(u.symbol)){
-          Serial.println("match!");
-          return &u;
-        }
-    }
-    return nullptr;
-}

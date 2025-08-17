@@ -271,7 +271,7 @@ void drawCalc(){
     }
     // print current trig mode
     display.setCursor(240, 20);
-    if (!(CurrentCALCState == CALC3 || CurrentCALCState == CALC4)){
+    if (!(CurrentCALCState == CALC4)){
     switch (trigType){
       // 0 = degree mode
       case (0):
@@ -281,9 +281,9 @@ void drawCalc(){
       case (1):
         display.print("rad");
       break;
-      // 2 = grad mode
+      // 2 = gradian mode
       case (2):
-        display.print("grad");
+        display.print("gon");
       break;
     }
   }
