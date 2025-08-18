@@ -168,6 +168,8 @@ void setup() {
     Serial.println("TouchPad Failed");
     oledWord("TouchPad Failed");
   }
+  // FRAMES SETUP
+  frames.reserve(MAX_FRAMES);
   //oledWord("setting cap thershold to 5,1");
   
   // Step 1: Stop electrode operation

@@ -9,15 +9,36 @@
 
 // !! Commented for code-review
 // to-do 
+// replace all frame bools with 8 bit flag
 // ensure max memory efficiency
-// einkBitmapFrameDynamic?
+// add frame thickness customization with drawThickLine()
+// add tiling functions
+// - add tracking variables for new positions
+/*
+Frames Class:
+@Description
+  This is a class that can display custom frames with various user-defined attributes
 
+  Notes:
+    MAX_FRAMES = 100, avoid overflowing to avoid reallocations
+    frames displayed will clear parts of overlapping frames
+    if choice != 0, frames will display an arrow to the right of the current scroll
+    if box = 1, a thin frame will be drawn around the box
+    frames uses a TextSource as a source for drawn text, which can be defined as either
+    a constant array of cha, a FixedArenaSource for dynamic text content, or a bitmap for images
+  frames.clear();
+  frames.push_back(frame *);
+
+  calcLines.pushLine(s.c_str(), (uint16_t)s.length(), f);
+  einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh)
+
+*/
 ///////////////////////////// HELPER FUNCTIONS
 // align numbers to be divisible by 8, useful for partial windows (y & h must be divisible by 8 with GxEPD2 with rotation == 3)
 int alignDown8(int v) { return v - (v % 8); }
 int alignUp8(int v)   { return (v % 8) ? v + (8 - (v % 8)) : v; }
 
-static size_t sliceThatFits(const char* s, size_t n, int maxTextWidth) {
+size_t sliceThatFits(const char* s, size_t n, int maxTextWidth) {
   if (!s || n == 0) return 0;
 
   int16_t x1, y1; uint16_t w, h;
@@ -55,53 +76,41 @@ static size_t sliceThatFits(const char* s, size_t n, int maxTextWidth) {
   return best;
 }
 
-static inline long totalLines(const Frame& f) {
+inline long totalLines(const Frame& f) {
   return f.source ? (long)f.source->size() : 0L;
 }
 
-static inline long maxFirstVisible(const Frame& f) {
+inline long maxFirstVisible(const Frame& f) {
   long tl = totalLines(f);
   long m  = (long)f.maxLines;
   if (m <= 0) return 0;
   return tl > m ? (tl - m) : 0L;
 }
 
-static inline void clampScroll(Frame& f) {
+inline void clampScroll(Frame& f) {
   long maxStart = maxFirstVisible(f);
   if (f.scroll < 0)       f.scroll = 0;
   if (f.scroll > maxStart) f.scroll = maxStart;
 }
 
-static inline void visibleRange(const Frame& f, long& start, long& end) {
-  // requires f.maxLines to be set for the current font/area
-  long tl = totalLines(f);
-  if (tl <= 0) { start = end = 0; return; }
-  start = f.scroll;
-  if (start < 0) start = 0;
-  long ml = (long)f.maxLines;
-  if (ml <= 0) { end = start; return; }
-  end = start + ml;
-  if (end > tl) end = tl;
-}
-
-static inline long maxScroll(const Frame& f) {
+inline long maxScroll(const Frame& f) {
   long tl = totalLines(f);
   long ml = (long)f.maxLines;
   if (ml <= 0) return 0;
   return (tl > ml) ? (tl - ml) : 0; 
 }
 
-static inline size_t trimCRLF(const char* s, size_t n) {
+inline size_t trimCRLF(const char* s, size_t n) {
   while (n && (s[n-1] == '\n' || s[n-1] == '\r')) --n;
   return n;
 }
 
-static inline long bottomIdx(const Frame& f) {
+inline long bottomIdx(const Frame& f) {
   long tl = totalLines(f);
   return (tl > 0) ? (tl - 1 - f.scroll) : -1;
 }
 
-static inline void ensureChoiceVisible(Frame& f) {
+inline void ensureChoiceVisible(Frame& f) {
   long T = f.source ? (long)f.source->size() : 0L;
   int  D = max(1, f.maxLines);
   if (T == 0 || f.choice < 0 || f.choice >= T) return;
@@ -114,23 +123,15 @@ static inline void ensureChoiceVisible(Frame& f) {
   f.scroll = T - D - startWanted;
 }
 
+inline int bytesPerRow1bpp(int w) { return (w + 7) >> 3; }
+
 inline void resetScroll(Frame& f) {
   long tl = (long)(f.source ? f.source->size() : 0);
   long ml = (long)f.maxLines;
   f.scroll = tl > ml ? (tl - ml) : 0;
   f.prevScroll = -1;
 }
-// UPDATE CURRENT FRAME SCROLL
-inline void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset){
-  int scroll, prev;
-  if (reset){
-    resetScroll(*currentFrameState);
-  } else {
-    currentFrameState->scroll = currentScroll;
-    currentFrameState->prevScroll = prevScroll;
-  }
-  return;
-}
+
 
 // GET CLEANED STRING FROM FRAME CHOICE
 String frameChoiceString(const Frame& f) {
@@ -140,7 +141,7 @@ String frameChoiceString(const Frame& f) {
   s.trim();
   return s;   
 }
-//COPY TEXTSOURCE TO STD::VECTOER<STRING> MEMORY INEFFICIENT
+// COPY TEXTSOURCE TO STD::VECTOER<STRING> MEMORY INEFFICIENT
 std::vector<String> sourceToVector(const TextSource* src) {
   std::vector<String> result;
   if (!src) return result;
@@ -153,7 +154,6 @@ std::vector<String> sourceToVector(const TextSource* src) {
   }
   return result;
 }
-
 
 ///////////////////////////// DRAWING FUNCTIONS
 // DRAW ALL FRAMES STORED WITHIN TOTAL FRAME BOUNDING BOX
@@ -176,7 +176,7 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
   if (minX > maxX || minY > maxY) return;
 
   const int winX = minX;
-  const int winY = alignUp8(minY);
+  const int winY = alignDown8(minY);
   const int winW = alignUp8(maxX - minX);
   const int winH = alignUp8(maxY - winY);
 
@@ -190,32 +190,47 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
     }
     //Serial.println("Drawing Text!");
     for (Frame* frame : frames) {
-      if (!frame || !frame->source) continue;
+      if (!frame || (!frame->source && !frame->bitmap)) continue;
 
       const int frameW = display.width()  - frame->left - frame->right;
       const int frameH = display.height() - frame->top  - frame->bottom;
       if (frameW <= 0 || frameH <= 0) continue;
 
-      if (frames.size() > 1){
-        display.fillRect(frame->left + 2, frame->top, frameW - 2, frameH, GxEPD_WHITE);
+      // if frame overlaps or is inverted, fill box with proper color
+      if (frame->invert || frame->overlap) {
+        display.fillRect(frame->left, frame->top, frameW, frameH,
+                        frame->invert ? GxEPD_BLACK : GxEPD_WHITE);
       }
 
       if (frame->box) {
         //Serial.println("drawing box!");
         if (frameW > 2 && frameH > 2) {
-          drawFrameBox(frame->left + 1, frame->top + 1, frameW - 2, frameH - 2);
+          drawFrameBox(frame->left + 1, frame->top + 1, frameW - 2, frameH - 2,frame->invert);
         }
       }
+      if (frame->bitmap) {
 
+        if (frame->bitmapW <= frameW && frame->bitmapH <= frameH) {
+
+          const uint16_t bitColor = frame->invert ? GxEPD_WHITE : GxEPD_BLACK;
+          if (frame->bitmapW <= frameW && frame->bitmapH <= frameH) {
+              int x = frame->left + (frameW - frame->bitmapW) / 2;
+              int y = frame->top  + (frameH - frame->bitmapH) / 2;
+              display.drawBitmap(x, y, frame->bitmap, frame->bitmapW, frame->bitmapH, bitColor);
+          }
+
+        }
+
+        continue;
+      }
       const int lineStride = fontHeight + lineSpacing;
 
       frame->maxLines = (lineStride > 1) ? (frameH / lineStride) - 1 : 0;
       if (frame->maxLines <= 0) continue;
 
       const long total  = frame->source ? (long)frame->source->size() : 0L;
-      const long maxScroll = (total > frame->maxLines) ? (total - frame->maxLines) : 0L;
-      if (frame->scroll > maxScroll) frame->scroll = maxScroll;
-      if (frame->scroll < 0)  frame->scroll = 0;
+      clampScroll(*frame);
+
       if (frame == CurrentFrameState && frame->choice >= 0) {
         ensureChoiceVisible(*frame);
       }
@@ -225,9 +240,8 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
       // remember if user was pinned to bottom before we adjust
       const bool wasPinnedToBottom = (frame->scroll == 0);
 
-      // if maxLines shrank or list shrank, cap scroll
-      if (frame->scroll > maxScroll) frame->scroll = maxScroll;
-      if (frame->scroll < 0)  frame->scroll = 0;
+      // if maxLines shrank or list shrank, clamp scroll
+      clampScroll(*frame);
 
       // if user is at bottom, keep them there when lines grow
       if (wasPinnedToBottom) frame->scroll = 0;
@@ -274,7 +288,7 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
             toPrint = toPrint + "<";
           }
           // draw with the current visual row index
-          drawLineInFrame(toPrint, outLine++, *frame, /*unused*/0, /*clearLine*/false, /*isPartial*/!doFull_);
+          drawLineInFrame(toPrint, outLine++, *frame, 0, false,!doFull_);
 
           pos += take;
           firstSlice = false;
@@ -287,13 +301,22 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
     //Serial.println("Done drawing frames!");
   (void)noRefresh;
 }
+
 // DRAW BOX AROUND FRAME
-void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight) {
-    // draw box around frame within the partial window
+void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight,bool invert) {
+  // draw box around frame within the partial window
+  if (invert){
+    display.drawFastHLine(usableX, usableY, usableWidth, GxEPD_WHITE); // Top
+    display.drawFastHLine(usableX, usableY + usableHeight - 1, usableWidth, GxEPD_WHITE); // Bottom
+    display.drawFastVLine(usableX, usableY, usableHeight, GxEPD_WHITE); // Left
+    display.drawFastVLine(usableX + usableWidth - 1, usableY, usableHeight, GxEPD_WHITE); // Right
+  } else {
+
     display.drawFastHLine(usableX, usableY, usableWidth, GxEPD_BLACK); // Top
     display.drawFastHLine(usableX, usableY + usableHeight - 1, usableWidth, GxEPD_BLACK); // Bottom
     display.drawFastVLine(usableX, usableY, usableHeight, GxEPD_BLACK); // Left
     display.drawFastVLine(usableX + usableWidth - 1, usableY, usableHeight, GxEPD_BLACK); // Right
+  }
 }
 // DRAW SINGLE LINE IN FRAME
 void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial) {
@@ -303,11 +326,9 @@ void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, 
     bool rightAlign  = line.startsWith("~R~");
     bool centerAlign = line.startsWith("~C~");
     if (rightAlign || centerAlign) line.remove(0, 3);
-
     int16_t x1, y1;
     uint16_t lineWidth, lineHeight;
     display.getTextBounds(line, 0, 0, &x1, &y1, &lineWidth, &lineHeight);
-
     int cursorX = computeCursorX(frame, rightAlign, centerAlign, x1, lineWidth);
     // set yRaw to frame top + spaces taken by all previous lines
     int yRaw = frame.top + lineIndex * (fontHeight + lineSpacing);
@@ -320,13 +341,11 @@ void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, 
         display.fillRect(frame.left, yClear,
                          display.width() - frame.left - frame.right,
                          clearHeight,
-                         GxEPD_WHITE);
+                         frame.invert ? GxEPD_BLACK :GxEPD_WHITE);
     }
     display.setCursor(cursorX, yDraw);
+    frame.invert ? display.setTextColor(GxEPD_WHITE) : display.setTextColor(GxEPD_BLACK);
     display.print(line);
-  
-    
-
 }
 
 ///////////////////////////// FRAME SCROLL FUNCTIONS
@@ -377,28 +396,34 @@ void updateScrollFromTouch_Frame() {
             newLineAdded = true;
             prev_dynamicScroll = dynamicScroll; 
             updateScroll(CurrentFrameState, prev_dynamicScroll, dynamicScroll);
-            if (CurrentFrameState->choice != -1){
-              if (CurrentFrameState == &conversionUnit) {
-                Serial.println("changed conversionUnit type!");
-                selectUnitType(conversionUnit.choice);
-              } else {
-                String sym = frameChoiceString(*CurrentFrameState);
-                Serial.println("Setting Unit to " + sym);
-                CurrentFrameState->unitA = (Unit*)getUnit(sym);
-              }
-           }
+            // choice specific behavior to be defined by user, must set frameSelection to 0 once addressed in app
+            if (!frameSelection && CurrentFrameState->choice != -1){
+              frameSelection = 1;
+            }
         }
     }
   }
 
-  //Serial.println("update scroll has finished!");
+  Serial.println("update scroll has finished!");
+  delay(100);
+}
+
+// UPDATE CURRENT FRAME SCROLL
+void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset){
+  int scroll, prev;
+  if (reset){
+    resetScroll(*currentFrameState);
+  } else {
+    currentFrameState->scroll = currentScroll;
+    currentFrameState->prevScroll = prevScroll;
+  }
+  return;
 }
 
 ///////////////////////////// FRAME OLED FUNCTIONS
 void oledScrollFrame() {
   // CLEAR DISPLAY
   u8g2.clearBuffer();
-  if (CurrentCALCState != CALC3) {}
   // draw background
   if (CurrentFrameState->choice == -1) u8g2.drawXBMP(0, 0, 128, 32, scrolloled0);
 
@@ -452,7 +477,7 @@ void oledScrollFrame() {
     displayedLinesEnd   = 0;
   }
 
-  if (CurrentCALCState == CALC3 && (CurrentFrameState->choice != -1)) {
+  if (CurrentFrameState->choice != -1) {
 
     //  fetch line by scroll
     long idx = CurrentFrameState->scroll;

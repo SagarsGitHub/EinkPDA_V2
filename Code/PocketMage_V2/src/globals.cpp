@@ -177,6 +177,8 @@ const OpEntry OPS[] = {
 };
 const size_t OPS_N = sizeof(OPS)/sizeof(OPS[0]);
 
+std::map<String, float> variables = {};
+
 #pragma region units
 static const Unit lengthUnits[] = {
     { "meter",         "m",    1.0,        0.0 }, //base
@@ -193,66 +195,67 @@ static const Unit lengthUnits[] = {
 };
 
 static const Unit areaUnits[] = {
-    { "Hectare",          "ha",   10000.0,        0.0 },
-    { "Acre",             "ac",   4046.8564224,   0.0 },
-    { "Square meter",     "m^2",  1.0,            0.0 }, //base
-    { "Square inch",      "in^2", 0.00064516,     0.0 },
-    { "Square yard",      "yd^2", 0.83612736,     0.0 },
-    { "Square foot",      "ft^2", 0.09290304,     0.0 },
-    { "Square mile",      "mi^2", 2589988.110336, 0.0 },
-    { "Square kilometer", "km^2", 1000000.0,      0.0 },
-    { "Square centimeter","cm^2", 0.0001,         0.0 },
-    { "Square millimeter","mm^2", 0.000001,       0.0 }
+    { "Hectare",          "ha",   10000.0,          0.0 },
+    { "Acre",             "ac",   4046.8564224,     0.0 },
+    { "Square meter",     "m^2",  1.0,              0.0 }, //base
+    { "Square inch",      "in^2", 0.00064516,       0.0 },
+    { "Square yard",      "yd^2", 0.83612736,       0.0 },
+    { "Square foot",      "ft^2", 0.09290304,       0.0 },
+    { "Square mile",      "mi^2", 2589988.110336,   0.0 },
+    { "Square kilometer", "km^2", 1000000.0,        0.0 },
+    { "Square centimeter","cm^2", 0.0001,           0.0 },
+    { "Square millimeter","mm^2", 0.000001,         0.0 }
 };
 
 static const Unit volumeUnits[] = {
-    { "Cubic meter",      "m^3",   1.0,           0.0 }, // base
-    { "Cubic centimeter", "cm^3",  1e-6,          0.0 },
-    { "Cubic millimeter", "mm^3",  1e-9,          0.0 },
-    { "Cubic kilometer",  "km^3",  1e9,           0.0 },
-    { "Liter",            "L",     0.001,         0.0 },
-    { "Milliliter",       "mL",    1e-6,          0.0 },
-    { "Cubic inch",       "in^3",  1.6387e-5,     0.0 },
-    { "Cubic foot",       "ft^3",  0.0283168,     0.0 },
-    { "Cubic yard",       "yd^3",  0.764555,      0.0 },
-    { "Teaspoon",         "tsp",   4.92892159375e-6, 0.0 },
+    { "Cubic meter",      "m^3",   1.0,               0.0 }, // base
+    { "Cubic centimeter", "cm^3",  1e-6,              0.0 },
+    { "Cubic millimeter", "mm^3",  1e-9,              0.0 },
+    { "Cubic kilometer",  "km^3",  1e9,               0.0 },
+    { "Liter",            "L",     0.001,             0.0 },
+    { "Milliliter",       "mL",    1e-6,              0.0 },
+    { "Cubic inch",       "in^3",  1.6387e-5,         0.0 },
+    { "Cubic foot",       "ft^3",  0.0283168,         0.0 },
+    { "Cubic yard",       "yd^3",  0.764555,          0.0 },
+    { "Teaspoon",         "tsp",   4.92892159375e-6,  0.0 },
     { "Tablespoon",       "tbsp",  1.478676478125e-5, 0.0 },
-    { "US gallon",        "gal",   0.00378541,    0.0 },
-    { "US quart",         "qt",    0.000946353,   0.0 },
-    { "US pint",          "pt",    0.000473176,   0.0 },
-    { "US cup",           "cup",   0.000236588,   0.0 },
-    { "US fluid ounce",   "fl oz", 2.9574e-5,     0.0 }
+    { "US gallon",        "gal",   0.00378541,        0.0 },
+    { "US quart",         "qt",    0.000946353,       0.0 },
+    { "US pint",          "pt",    0.000473176,       0.0 },
+    { "US cup",           "cup",   0.000236588,       0.0 },
+    { "US fluid ounce",   "fl oz", 2.9574e-5,         0.0 }
 };
 
 static const Unit massUnits[] = {
-    { "Kilogram",     "kg",   1.0,         0.0 }, // base
-    { "Gram",         "g",    0.001,       0.0 },
-    { "Milligram",    "mg",   1e-6,        0.0 },
-    { "Microgram",    "µg",   1e-9,        0.0 },
-    { "Metric ton",   "t",    1000.0,      0.0 },
-    { "Pound",        "lb",   0.45359237,  0.0 },
-    { "Ounce",        "oz",   0.0283495,   0.0 },
-    { "Stone",        "st",   6.35029,     0.0 },
-    { "US ton",       "sh t", 907.18474,   0.0 },
-    { "Imperial ton", "l t",  1016.0469088,0.0 }
+    { "Kilogram",     "kg",   1.0,           0.0 }, // base
+    { "Gram",         "g",    0.001,         0.0 },
+    { "Milligram",    "mg",   1e-6,          0.0 },
+    { "Microgram",    "µg",   1e-9,          0.0 },
+    { "Metric ton",   "t",    1000.0,        0.0 },
+    { "Pound",        "lb",   0.45359237,    0.0 },
+    { "Ounce",        "oz",   0.0283495,     0.0 },
+    { "Stone",        "st",   6.35029,       0.0 },
+    { "US ton",       "sh t", 907.18474,     0.0 },
+    { "Imperial ton", "l t",  1016.0469088,  0.0 }
 };
 
 static const Unit temperatureUnits[] = {
-    { "kelvin",     "K",   1.0,       0.0 },     // base
-    { "celsius",    "°C",  1.0,     273.15 },
-    { "fahrenheit", "°F",  5.0/9.0, 459.67 }
+    { "kelvin",     "K",   1.0,         0.0 },     // base
+    { "celsius",    "C",  1.0,       273.15 },
+    { "fahrenheit", "F",  5.0/9.0,   459.67 },
+    { "rankine",    "R",  5.0/9.0,        0 }
 };
 
 static const Unit energyUnits[] = {
-    { "Joule",         "J",      1.0,            0.0 }, // base
-    { "Kilojoule",     "kJ",     1000.0,         0.0 },
-    { "Calorie",       "cal",    4.184,          0.0 },
-    { "Kilocalorie",   "kcal",   4184.0,         0.0 },
-    { "Watt-hour",     "Wh",     3600.0,         0.0 },
-    { "Kilowatt-hour", "kWh",    3600000.0,      0.0 },
-    { "Electronvolt",  "eV",     1.602176634e-19,0.0 },
-    { "BTU",           "BTU",    1055.06,        0.0 },
-    { "Therm",         "therm",  1.055e8,        0.0 }
+    { "Joule",         "J",      1.0,              0.0 }, // base
+    { "Kilojoule",     "kJ",     1000.0,           0.0 },
+    { "Calorie",       "cal",    4.184,            0.0 },
+    { "Kilocalorie",   "kcal",   4184.0,           0.0 },
+    { "Watt-hour",     "Wh",     3600.0,           0.0 },
+    { "Kilowatt-hour", "kWh",    3600000.0,        0.0 },
+    { "Electronvolt",  "eV",     1.602176634e-19,  0.0 },
+    { "BTU",           "BTU",    1055.06,          0.0 },
+    { "Therm",         "therm",  1.055e8,          0.0 }
 };
 
 static const Unit speedUnits[] = {
@@ -273,16 +276,16 @@ static const Unit pressureUnits[] = {
     { "Pascal",      "Pa",    1.0,                       0.0 }, // base
     { "Kilopascal",  "kPa",   1000.0,                    0.0 },       
     { "Megapascal",  "MPa",   1e6,                       0.0 },       
-    { "Pound/in²",   "psi",   6894.757293168,            0.0 }        
+    { "Pound/in^2",  "psi",  6894.757293168,             0.0 }        
 };
 
 static const Unit dataUnits[] = {
-    { "Bit",        "bit",  1.0/8.0,                 0.0 },
-    { "Byte",       "B",    1.0,                     0.0 }, // base
-    { "Kilobyte",   "kB",   1000.0,                  0.0 },
-    { "Megabyte",   "MB",   1000.0*1000.0,           0.0 },
-    { "Gigabyte",   "GB",   1e9,                     0.0 },
-    { "Terabyte",   "TB",   1e12,                    0.0 },
+    { "Bit",        "bit",  1.0/8.0,                  0.0 },
+    { "Byte",       "B",    1.0,                      0.0 }, // base
+    { "Kilobyte",   "kB",   1000.0,                   0.0 },
+    { "Megabyte",   "MB",   1000.0*1000.0,            0.0 },
+    { "Gigabyte",   "GB",   1e9,                      0.0 },
+    { "Terabyte",   "TB",   1e12,                     0.0 },
     { "Kibibyte",   "KiB",  1024.0,                   0.0 },
     { "Mebibyte",   "MiB",  1024.0*1024.0,            0.0 },
     { "Gibibyte",   "GiB",  1024.0*1024.0*1024.0,     0.0 },
@@ -290,25 +293,25 @@ static const Unit dataUnits[] = {
 };
 
 static const Unit angleUnits[] = {
-    { "Radian",     "rad",   1.0,                            0.0 }, // base
-    { "Degree",     "°",     3.14159265358979323846/180.0,   0.0 },
-    { "Gradian",    "gon",   3.14159265358979323846/200.0,   0.0 },
-    { "Arcminute",  "arcmin",3.14159265358979323846/10800.0, 0.0 },
-    { "Arcsecond",  "arcsec",3.14159265358979323846/648000.0,0.0 },
-    { "Revolution", "rev",   2.0*3.14159265358979323846,     0.0 },
-    { "Milliradian","mrad",  0.001,                          0.0 }
+    { "Radian",     "rad",   1.0,                              0.0 }, // base
+    { "Degree",     "deg",   3.14159265358979323846/180.0,     0.0 },
+    { "Gradian",    "gon",   3.14159265358979323846/200.0,     0.0 },
+    { "Arcminute",  "arcmin",3.14159265358979323846/10800.0,   0.0 },
+    { "Arcsecond",  "arcsec",3.14159265358979323846/648000.0,  0.0 },
+    { "Revolution", "rev",   2.0*3.14159265358979323846,       0.0 },
+    { "Milliradian","mrad",  0.001,                            0.0 }
 };
 
 static const Unit timeUnits[] = {
-    { "Second",      "s",   1.0,      0.0 }, //base
-    { "Millisecond", "ms",  0.001,    0.0 },
-    { "Microsecond", "µs",  1e-6,     0.0 },
-    { "Nanosecond",  "ns",  1e-9,     0.0 },
-    { "Minute",      "min", 60.0,     0.0 },
-    { "Hour",        "h",   3600.0,   0.0 },
-    { "Day",         "d",   86400.0,  0.0 },
-    { "Week",        "wk",  604800.0, 0.0 },
-    { "Year",        "yr",  31557600.0, 0.0 } // 365.25 days
+    { "Second",      "s",   1.0,         0.0 }, //base
+    { "Millisecond", "ms",  0.001,       0.0 },
+    { "Microsecond", "µs",  1e-6,        0.0 },
+    { "Nanosecond",  "ns",  1e-9,        0.0 },
+    { "Minute",      "min", 60.0,        0.0 },
+    { "Hour",        "h",   3600.0,      0.0 },
+    { "Day",         "d",   86400.0,     0.0 },
+    { "Week",        "wk",  604800.0,    0.0 },
+    { "Year",        "yr",  31557600.0,  0.0 } // 365.25 days
 };
 
 static const Unit powerUnits[] = {
@@ -320,19 +323,19 @@ static const Unit powerUnits[] = {
 };
 
 static const Unit forceUnits[] = {
-    { "Newton",        "N",    1.0,    0.0 }, //base
-    { "Dyne",          "dyn",  1e-5,   0.0 },
-    { "Kilogram-force","kgf",  9.80665,0.0 },
-    { "Pound-force",   "lbf",  4.44822,0.0 },
-    { "Ounce-force",   "ozf",  0.278014,0.0 }
+    { "Newton",        "N",    1.0,       0.0 }, //base
+    { "Dyne",          "dyn",  1e-5,      0.0 },
+    { "Kilogram-force","kgf",  9.80665,   0.0 },
+    { "Pound-force",   "lbf",  4.44822,   0.0 },
+    { "Ounce-force",   "ozf",  0.278014,  0.0 }
 };
 
 static const Unit frequencyUnits[] = {
-    { "Hertz",                 "Hz",   1.0,     0.0 }, //base
-    { "Kilohertz",             "kHz",  1000.0,  0.0 },
-    { "Megahertz",             "MHz",  1e6,     0.0 },
-    { "Gigahertz",             "GHz",  1e9,     0.0 },
-    { "Revolutions per minute","rpm",  1.0/60.0,0.0 }
+    { "Hertz",                 "Hz",   1.0,       0.0 }, //base
+    { "Kilohertz",             "kHz",  1000.0,    0.0 },
+    { "Megahertz",             "MHz",  1e6,       0.0 },
+    { "Gigahertz",             "GHz",  1e9,       0.0 },
+    { "Revolutions per minute","rpm",  1.0/60.0,  0.0 }
 };
 // Helper for array length
 template <typename T, size_t N>
@@ -380,7 +383,7 @@ const ProgmemTableSource* CurrentUnitListSrc = &convLengthSrc;  // pairs with Le
 
 
 FixedArenaSource<512, 16384> calcLines; 
-ProgmemTableSource gHelpSrc(HELP_LINES, HELP_COUNT);
+ProgmemTableSource helpSrc(HELP_LINES, HELP_COUNT);
 ProgmemTableSource unitTypesSrc(UNIT_TYPES_LINES, UNIT_TYPES_COUNT);
 ProgmemTableSource convDirSrc(CONV_DIR_LINES, CONV_DIR_COUNT);
 ProgmemTableSource convLengthSrc(CONV_LENGTH_LINES, CONV_LENGTH_COUNT);
@@ -400,28 +403,36 @@ ProgmemTableSource convFrequencySrc(CONV_FREQUENCY_LINES, CONV_FREQUENCY_COUNT);
 #pragma endregion
 
 #pragma endregion
+
 CALCState CurrentCALCState = CALC0;
 Frame *CurrentFrameState = &calcScreen;
+
 std::vector<String> prevTokens;
 String cleanExpression = "";
 String calculatedResult = "";
 String prevLine = "";
-std::map<String, float> variables = {};
+
+
 int calcSwitchedStates = 0;
 int trigType = 1;
 int refresh_count = 0;
 int currentFrameChoice = -1;
-
+int frameSelection = 0;
 // <frame.cpp>
 #pragma region frameSetup
 Frame calcScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP,FRAME_BOTTOM,&calcLines,false,false);
+Frame testBitmapScreen(FRAME_LEFT + 30,FRAME_RIGHT + 200,FRAME_TOP - 16,FRAME_BOTTOM + 80,homeIconsAllArray[0],40,40,false,false);
+Frame testBitmapScreen1(0,0,0,0,calendar_allArray[3],320,218,false,true);
+Frame testBitmapScreen2(FRAME_LEFT + 160,FRAME_RIGHT,FRAME_TOP,FRAME_BOTTOM + 60,homeIconsAllArray[0],40,40,false,true);
+Frame testTextScreen(FRAME_LEFT + 8,FRAME_RIGHT + 96,FRAME_TOP + 80,FRAME_BOTTOM + 8,&helpSrc,false,true);
 Frame conversionScreen(FRAME_LEFT ,FRAME_RIGHT,FRAME_TOP + 80, FRAME_BOTTOM,&calcLines,false,true);
-Frame helpScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP,FRAME_BOTTOM,&gHelpSrc,false,true);
+Frame helpScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP,FRAME_BOTTOM,&helpSrc,false,true);
 Frame conversionUnit(FRAME_LEFT ,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM + 136,&unitTypesSrc,false,true);
 Frame conversionDirection(FRAME_LEFT + 120 ,FRAME_RIGHT + 120,FRAME_TOP + 40, FRAME_BOTTOM + 96,&convDirSrc,false,false);
 Frame conversionFrameA(FRAME_LEFT + 24,FRAME_RIGHT + 184,FRAME_TOP + 40, FRAME_BOTTOM + 96,&convLengthSrc,true,true);
 Frame conversionFrameB(FRAME_LEFT + 184,FRAME_RIGHT + 24,FRAME_TOP + 40, FRAME_BOTTOM + 96,&convLengthSrc,true,true);
 std::vector<Frame*> frames = {};
+
 #pragma endregion
 
 Unit emptyUnit = {"","",NAN,NAN};

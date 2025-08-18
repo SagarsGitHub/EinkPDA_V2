@@ -11,10 +11,18 @@
 
 // !! Commented for code-review
 // to-do 
-// make convertToRPN && evaluateRPN able to handle standard notation inputs from other apps
+// depreciate ~C~ and ~R~ for flags included in LineView 
+// - flags bitmask 0000 0000
+//  LF_NONE=0000 0000
+//  LF_RIGHT= 0000 0001
+//  LF_CENTER= 0000 00010
+//  other flags to be determined 
+// make convertToRPN && evaluateRPN able to handle standard notation inputs from other apps 
+//  - (in tokenize, convert operators into standard notation)
 // programming mode
 // implement matrix multiplication
 // implement for loops and conditionals
+// strategy design pattern implementation?
 #pragma region setupData
 #pragma region helpText
 
@@ -60,7 +68,7 @@ const char hl38[] PROGMEM = " rad : radian mode\n";
 const char hl39[] PROGMEM = "  \n";
 const char hl40[] PROGMEM = " deg : degree mode\n";
 const char hl41[] PROGMEM = "  \n";
-const char hl42[] PROGMEM = " grad : gradian mode\n";
+const char hl42[] PROGMEM = " gon : gradian mode\n";
 const char hl43[] PROGMEM = "  \n";
 const char hl44[] PROGMEM = " keyboard changes:\n";
 const char hl45[] PROGMEM = "~C~default kb state:FUNC\n";
@@ -99,7 +107,7 @@ const char hl77[] PROGMEM = " abs(a)\n";
 const char hl78[] PROGMEM = " rand(a,b) from min a->b\n";
 const char hl79[] PROGMEM = " dice(a,b) a: num b:sides\n";
 const char hl80[] PROGMEM = " pick(a,n) a: choices\n";
-const char hl81[] PROGMEM = " ~C~n: no. choices\n";
+const char hl81[] PROGMEM = "~C~n: no. choices\n";
 const char hl82[] PROGMEM = "\n";
 const char hl83[] PROGMEM = "variables: \n";
 const char hl84[] PROGMEM = "\n";
@@ -253,9 +261,9 @@ const size_t CONV_MASS_COUNT = sizeof(CONV_MASS_LINES) / sizeof(CONV_MASS_LINES[
 #pragma region convTemperature
 
 const char ct0[] PROGMEM = "~C~K\n";
-const char ct1[] PROGMEM = "~C~°C\n";
-const char ct2[] PROGMEM = "~C~°F\n";
-const char ct3[] PROGMEM = "~C~°R\n";
+const char ct1[] PROGMEM = "~C~C\n";
+const char ct2[] PROGMEM = "~C~F\n";
+const char ct3[] PROGMEM = "~C~R\n";
 
 const char* const CONV_TEMPERATURE_LINES[] PROGMEM = {
   ct0, ct1, ct2, ct3
@@ -464,17 +472,17 @@ inline bool isConstantToken(const String& token) {
   return false;
 }
 // COMPARE TO SET OF OPERATORS
-static inline bool isOperatorToken(const String& token) {
+inline bool isOperatorToken(const String& token) {
   for (size_t i=0;i<OPS_N;++i) if (token.equals(OPS[i].token)) return true;
   return false;
 }
 // CHECK OPERATOR PRECEDENCE
-static inline uint8_t precedenceOfToken(const String& token) {
+inline uint8_t precedenceOfToken(const String& token) {
   for (size_t i=0;i<OPS_N;++i) if (token.equals(OPS[i].token)) return OPS[i].prec;
   return 0;
 }
 // CHECK OPERATOR RIGHT ASSOCIATIVITY
-static inline bool isRightAssociative(const String& token) {
+inline bool isRightAssociative(const String& token) {
   for (size_t i=0;i<OPS_N;++i) if (token.equals(OPS[i].token)) return OPS[i].rightAssoc;
   return false;
 }
@@ -504,24 +512,7 @@ inline double convert(double value,const Unit* from,const Unit* to) {
     double inBase = (value + from->offset) * from->factor;
     return (inBase / to->factor) - to->offset;
 }
-// UPDATE CURRENT FRAME SCROLL
-inline void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset){
-  int scroll, prev;
-  
-  if (reset){
-    currentFrameState->scroll = 0;
-    currentFrameState->prevScroll = -1;
 
-  } else {
-    currentFrameState->scroll = currentScroll;
-    currentFrameState->prevScroll = prevScroll;
-  }
-  if (currentFrameChoice != CurrentFrameState->scroll){
-    
-    currentFrameChoice = CurrentFrameState->scroll;
-  }
-  return;
-}
 // ADD LINE TO CALCLINES
 inline void calcAppend(const String& s, bool right, bool center) {
   uint8_t f = right ? LF_RIGHT : center ? LF_CENTER : LF_NONE;
@@ -569,18 +560,33 @@ void CALC_INIT() {
   CurrentAppState = CALC;
   CurrentKBState = FUNC;
   CurrentFrameState = &calcScreen;
+  frames.clear();
   frames.push_back(&calcScreen);
+
+  frames.push_back(&testBitmapScreen1);
+  frames.push_back(&testBitmapScreen);
+  frames.push_back(&testTextScreen);
+  frames.push_back(&testBitmapScreen2);
+  testTextScreen.scroll = helpSrc.size() - 11;
+  CurrentFrameState = &testTextScreen;
   // not clean, relying on magic number 11 since the frame hasn't been drawn with EinkFrameDynamic
-  helpScreen.scroll = gHelpSrc.size() - 11;
+  helpScreen.scroll = helpSrc.size() - 11;
   conversionFrameA.extendedBottom = FRAME_BOTTOM + 8;
+  conversionFrameA.overlap = 1;
   conversionFrameB.extendedBottom = FRAME_BOTTOM + 8;
-  conversionUnit.extendedBottom = FRAME_BOTTOM + 64;
+  conversionFrameB.overlap = 1;
+  conversionUnit.extendedBottom = FRAME_BOTTOM + 40;
+  conversionUnit.overlap = 1;
   conversionDirection.choice = 0;
   conversionFrameA.choice = 0;
   conversionFrameB.choice = 0;
   conversionUnit.choice = 0;
   currentFrameChoice = conversionUnit.choice;
-
+  testBitmapScreen1.invert = 1;
+  testBitmapScreen.overlap = 1;
+  testBitmapScreen2.overlap = 1;
+  testTextScreen.overlap = 1;
+  testTextScreen.choice = 3;
   dynamicScroll = 0;
   prev_dynamicScroll = -1;
   lastTouch = -1;
@@ -604,7 +610,19 @@ void processKB_CALC() {
     setTXTFont(currentFont);
     // update scroll (calc specific function,could be abstracted to processSB_CALC())
     updateScrollFromTouch_Frame();
-    
+    if (frameSelection){
+      if (CurrentFrameState->choice != -1){
+        if (CurrentFrameState == &conversionUnit) {
+          Serial.println("changed conversionUnit type!");
+          selectUnitType(conversionUnit.choice);
+        } else {
+          String sym = frameChoiceString(*CurrentFrameState);
+          Serial.println("Setting Unit to " + sym);
+          CurrentFrameState->unit = (Unit*)getUnit(sym);
+        }
+      }
+      frameSelection = 0;
+    }
     switch (CurrentCALCState) {
 
       // CONVERSIONS MODE 
@@ -974,14 +992,26 @@ void einkHandler_CALC() {
       doFull = 1;
       frames.clear();
       if (CurrentCALCState != CALC3 && CurrentCALCState != CALC4)  {   
+        // to-do: convert to helper function to reset all frame tabs
         conversionFrameA.bottom = conversionFrameA.originalBottom;
         conversionFrameB.bottom = conversionFrameB.originalBottom;
+        conversionUnit.bottom = conversionUnit.originalBottom;
         frames.push_back(&calcScreen);
         CurrentFrameState = &calcScreen;
       } else {
         doFull = 1;
         frames.clear();
-        if (CurrentCALCState == CALC3){
+        if (CurrentCALCState == CALC1){
+          //frames.push_back(&programmingScreen);
+          //frames.push_back(&numberSizeFrame);
+          //frames.push_back(&hexadecimalFrame);
+          //frames.push_back(&decimalFrame);
+          //frames.push_back(&octalFrame);
+          //frames.push_back(&binaryFrame);
+          CurrentFrameState = &calcScreen; // placeholder
+          CurrentFrameState->scroll = 0;
+          CurrentFrameState->prevScroll = -1;
+        } else if (CurrentCALCState == CALC3){
           frames.push_back(&conversionScreen);
           frames.push_back(&conversionFrameA);
           frames.push_back(&conversionFrameB);
@@ -990,7 +1020,7 @@ void einkHandler_CALC() {
           CurrentFrameState = &conversionScreen;
           CurrentFrameState->scroll = 0;
           CurrentFrameState->prevScroll = -1;
-        } else {
+        }else {
           frames.clear();
 
           currentFont = &FreeMonoBold9pt7b;
@@ -1190,10 +1220,8 @@ std::deque<String> convertToRPN(String expression) {
         if (c == '(') paren_balance++;
         else if (c == ')') paren_balance--;
     }
-
-    if (paren_balance != 0) {
-        return {}; 
-    }
+    if (paren_balance != 0) return {}; 
+    
     // Shunting Yard Algorithm
     for (size_t i = 0; i < tokens.size(); ++i) {
         const String& token = tokens[i];
@@ -1467,7 +1495,7 @@ String evaluateRPN(std::deque<String> rpnQueue, const Unit *convA, const Unit *c
           } else {
               oledWord("undefined variable");
               delay(1000);
-              return "E: undefined variable '" + token + "'";
+              return "E: undefined variable";
           }
         }
 
@@ -1792,8 +1820,6 @@ String evaluateRPN(std::deque<String> rpnQueue, const Unit *convA, const Unit *c
     }
 
     if (evalStack.size() != 1) {
-      oledWord("malformed expression");
-      delay(1000);
       return "E: malformed exp";
     }
     if (varStack.size() != 0){

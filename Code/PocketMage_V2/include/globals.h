@@ -222,9 +222,10 @@ extern FileWizState CurrentFileWizState;
 extern String workingFile;
 
 // <frameFunc.cpp>
+# define MAX_FRAMES 100
 # define X_OFFSET 4
 #pragma region textSource
-// bit flags for alignment or future markup
+// bit flags for alignment or future options
 enum LineFlags : uint8_t { LF_NONE=0, LF_RIGHT= 1<<0, LF_CENTER= 1<<1 };
 struct LineView {
   const char* ptr;   // points to NUL-terminated string in RAM or PROGMEM
@@ -330,8 +331,8 @@ extern const size_t              AllUnitListsCount;
 extern const UnitSet* CurrentUnitSet;
 extern const ProgmemTableSource* CurrentUnitListSrc;
 
-extern FixedArenaSource<512, 16384> calcLines;  // replaces allLinesCalc
-extern ProgmemTableSource gHelpSrc;
+extern FixedArenaSource<512, 16384> calcLines;
+extern ProgmemTableSource helpSrc;
 extern ProgmemTableSource unitTypesSrc;
 extern ProgmemTableSource convDirSrc;
 extern ProgmemTableSource convLengthSrc;
@@ -353,19 +354,62 @@ extern const UnitSet* CurrentUnitSet;
 #pragma endregion
 #pragma region frameSetup
 class Frame {
-public: 
-  int left,right,top, bottom, extendedBottom, originalBottom ;
-  bool cursor;
-  bool box;
-  int choice = -1;
-  long scroll = 0;
-  long prevScroll = -1;
-  int maxLines = 0;
-  long lastTotal = -1;
-  const TextSource* source = nullptr;
-  const Unit *unitA = nullptr;
-  Frame(int left,int right,int top,int bottom, TextSource* linesPtr,bool cursor,bool box)
-    : left(left), right(right), top(top),bottom(bottom), source(linesPtr), cursor(cursor), box(box) , extendedBottom(bottom), originalBottom(bottom) { }
+public:
+  // what kind of content this frame holds
+  enum class Kind : uint8_t { none, text, bitmap };
+
+  // geometry
+  int left, right, top, bottom;
+  int extendedBottom, originalBottom;
+
+  // flags/state switch to uint8_t flag
+  bool cursor   = false;
+  bool box      = false;
+  bool invert   = false;
+  bool overlap  = false;
+
+  int   choice     = -1;
+  long  scroll     = 0;
+  long  prevScroll = -1;
+  int   maxLines   = 0;
+  long  lastTotal  = -1;
+
+  // content (only one valid at a time)
+  Kind kind = Kind::none;
+  const TextSource* source = nullptr;  // for text frames
+  const uint8_t* bitmap    = nullptr;  // for bitmap frames
+  int bitmapW = 0;
+  int bitmapH = 0;
+  
+  const Unit *unit = nullptr;
+  // base constructor for common fields
+  Frame(int left, int right, int top, int bottom, bool cursor=false, bool box=false)
+  : left(left), right(right), top(top), bottom(bottom),
+    extendedBottom(bottom), originalBottom(bottom),
+    cursor(cursor), box(box) {}
+
+  // constructor for text frames
+  Frame(int left, int right, int top, int bottom,
+        const TextSource* linesPtr,
+        bool cur=false, bool bx=false)
+  : Frame(left, right, top, bottom, cur, bx) {
+    kind   = Kind::text;
+    source = linesPtr;
+  }
+
+  // constructor for bitmap frames
+  Frame(int left, int right, int top, int bottom,
+        const uint8_t* bitmapPtr, int width, int height,
+        bool cursor=false, bool box=false)
+  : Frame(left, right, top, bottom, cursor, box) {
+    kind      = Kind::bitmap;
+    bitmap    = bitmapPtr;
+    bitmapW      = width;
+    bitmapH      = height;
+  }
+
+  bool hasText()   const { return kind == Kind::text   && source; }
+  bool hasBitmap() const { return kind == Kind::bitmap && bitmap; }
 };
 extern Frame calcScreen;
 extern Frame conversionScreen;
@@ -375,8 +419,13 @@ extern Frame conversionDirection;
 extern Frame conversionFrameA;
 extern Frame conversionFrameB;
 extern Frame conversionTypes;
+extern Frame testBitmapScreen;
+extern Frame testBitmapScreen1;
+extern Frame testBitmapScreen2;
+extern Frame testTextScreen;
 extern Frame *CurrentFrameState;
 extern int currentFrameChoice;
+extern int frameSelection;
 extern std::vector<Frame*> frames;
 #pragma endregion
 
@@ -510,7 +559,7 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
   // text boxes
 std::vector<String> formatText(Frame &frame,int maxTextWidth);
 void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial);
-void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight);
+void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight,bool invert);
   // String formatting
 static size_t sliceThatFits(const char* s, size_t n, int maxTextWidth);
 std::vector<String> sourceToVector(const TextSource* src);
@@ -518,6 +567,7 @@ String frameChoiceString(const Frame& f);
   //scroll
 void updateScrollFromTouch_Frame(); 
 void oledScrollFrame(); 
+void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset);
   // helpers
 void getVisibleRange(Frame *f, long totalLines, long &startLine, long &endLine);
 int computeCursorX(Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth);
