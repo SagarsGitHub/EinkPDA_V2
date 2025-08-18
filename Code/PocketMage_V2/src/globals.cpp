@@ -265,13 +265,15 @@ static const Unit speedUnits[] = {
 };
 
 static const Unit pressureUnits[] = {
-    { "Pascal",      "Pa",   1.0,            0.0 }, // base
-    { "Kilopascal",  "kPa",  1000.0,         0.0 },
-    { "Megapascal",  "MPa",  1e6,            0.0 },
-    { "Bar",         "bar",  100000.0,       0.0 },
-    { "Atmosphere",  "atm",  101325.0,       0.0 },
-    { "Torr",        "Torr", 101325.0/760.0, 0.0 },
-    { "Pound/in²",   "psi",  6894.757293168, 0.0 }
+    { "Atmosphere",  "atm",   101325.0,                  0.0 }, 
+    { "Bar",         "bar",   100000.0,                  0.0 }, 
+    { "Millibar",    "mbar",  100.0,                     0.0 }, 
+    { "Torr",        "Torr",  101325.0/760.0,            0.0 }, 
+    { "Millitorr",   "mTorr", (101325.0/760.0)/1000.0,   0.0 }, 
+    { "Pascal",      "Pa",    1.0,                       0.0 }, // base
+    { "Kilopascal",  "kPa",   1000.0,                    0.0 },       
+    { "Megapascal",  "MPa",   1e6,                       0.0 },       
+    { "Pound/in²",   "psi",   6894.757293168,            0.0 }        
 };
 
 static const Unit dataUnits[] = {

@@ -196,7 +196,9 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
       const int frameH = display.height() - frame->top  - frame->bottom;
       if (frameW <= 0 || frameH <= 0) continue;
 
-      display.fillRect(frame->left + 2, frame->top, frameW - 2, frameH, GxEPD_WHITE);
+      if (frames.size() > 1){
+        display.fillRect(frame->left + 2, frame->top, frameW - 2, frameH, GxEPD_WHITE);
+      }
 
       if (frame->box) {
         //Serial.println("drawing box!");
@@ -239,11 +241,10 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
       const int maxTextWidth = frameW;
       int outLine = 0;
       getVisibleRange(frame, total, startLine, endLine); 
-      // Force the visible window to the selected line when only one line fits
+      // force the visible window to the selected line when only one line fits
       if (frame->maxLines <= 1 && frame->choice >= 0 && frame->choice < total) {
         startLine = frame->choice;
-        endLine   = frame->choice + 1;       // draw exactly one line
-        // (bounds already checked; endLine won't exceed total)
+        endLine   = frame->choice + 1; 
       }
       for (long li = startLine; li < endLine; ++li) {
         LineView lv = frame->source->line(li);

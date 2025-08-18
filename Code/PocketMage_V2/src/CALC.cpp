@@ -297,16 +297,21 @@ const char* const CONV_SPEED_LINES[] PROGMEM = { cs0, cs1, cs2, cs3, cs4, cs5 };
 const size_t CONV_SPEED_COUNT = sizeof(CONV_SPEED_LINES)/sizeof(CONV_SPEED_LINES[0]);
 #pragma endregion
 #pragma region convPressure
-const char cp0[] PROGMEM = "~C~Pa\n";
-const char cp1[] PROGMEM = "~C~kPa\n";
-const char cp2[] PROGMEM = "~C~MPa\n";
-const char cp3[] PROGMEM = "~C~bar\n";
-const char cp4[] PROGMEM = "~C~atm\n";
-const char cp5[] PROGMEM = "~C~Torr\n";
-const char cp6[] PROGMEM = "~C~psi\n";
+const char cp0[] PROGMEM = "~C~atm\n";
+const char cp1[] PROGMEM = "~C~bar\n";
+const char cp2[] PROGMEM = "~C~mbar\n";
+const char cp3[] PROGMEM = "~C~Torr\n";
+const char cp4[] PROGMEM = "~C~mTorr\n";
+const char cp5[] PROGMEM = "~C~Pa\n";
+const char cp6[] PROGMEM = "~C~kPa\n";
+const char cp7[] PROGMEM = "~C~MPa\n";
+const char cp8[] PROGMEM = "~C~psi\n";
 
-const char* const CONV_PRESSURE_LINES[] PROGMEM = { cp0, cp1, cp2, cp3, cp4, cp5, cp6 };
-const size_t CONV_PRESSURE_COUNT = sizeof(CONV_PRESSURE_LINES)/sizeof(CONV_PRESSURE_LINES[0]);
+const char* const CONV_PRESSURE_LINES[] PROGMEM = {
+  cp0, cp1, cp2, cp3, cp4, cp5, cp6, cp7, cp8
+};
+
+const size_t CONV_PRESSURE_COUNT = sizeof(CONV_PRESSURE_LINES) / sizeof(CONV_PRESSURE_LINES[0]);
 #pragma endregion
 #pragma region convData
 const char cd0[]  PROGMEM = "~C~bit\n";
@@ -1007,7 +1012,7 @@ void einkHandler_CALC() {
           //standard mode
           if (newState && doFull) { 
             drawCalc();
-            einkTextFramesDynamic(frames,true,false);
+            einkTextFramesDynamic(frames,false,false);
             //refresh();
             doFull = false;
           } else if (newLineAdded && !newState) {
