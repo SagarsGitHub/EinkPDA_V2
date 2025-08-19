@@ -24,15 +24,14 @@ Frames Class:
     frames displayed will clear parts of overlapping frames
     if choice != 0, frames will display an arrow to the right of the current scroll
     if box = 1, a thin frame will be drawn around the box
-    if invert = 1, text will be displayed in dark mode
-    if overlap = 1, frame with cover any contect behind frame
     frames uses a TextSource as a source for drawn text, which can be defined as either
-    a constant array of char, a FixedArenaSource for dynamic text content, or a bitmap for images
+    a constant array of cha, a FixedArenaSource for dynamic text content, or a bitmap for images
   frames.clear();
   frames.push_back(frame *);
 
   calcLines.pushLine(s.c_str(), (uint16_t)s.length(), f);
   einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh)
+
 */
 ///////////////////////////// HELPER FUNCTIONS
 // align numbers to be divisible by 8, useful for partial windows (y & h must be divisible by 8 with GxEPD2 with rotation == 3)
@@ -76,54 +75,65 @@ size_t sliceThatFits(const char* s, size_t n, int maxTextWidth) {
   }
   return best;
 }
-// GET TOTAL LINES OF SOURCE !!
-inline long totalLines(const Frame& frame) {
-  return frame.source ? (long)frame.source->size() : 0L;
+
+inline long totalLines(const Frame& f) {
+  return f.source ? (long)f.source->size() : 0L;
 }
-// FIND MAX SCROLL BASED ON TXT SOURCE SIZE AND FRAME'S MAX LINES !!
-inline long maxScroll(const Frame& frame) {
-  long tl = totalLines(frame);
-  long ml = (long)frame.maxLines;
+
+inline long maxFirstVisible(const Frame& f) {
+  long tl = totalLines(f);
+  long m  = (long)f.maxLines;
+  if (m <= 0) return 0;
+  return tl > m ? (tl - m) : 0L;
+}
+
+inline void clampScroll(Frame& f) {
+  long maxStart = maxFirstVisible(f);
+  if (f.scroll < 0)       f.scroll = 0;
+  if (f.scroll > maxStart) f.scroll = maxStart;
+}
+
+inline long maxScroll(const Frame& f) {
+  long tl = totalLines(f);
+  long ml = (long)f.maxLines;
   if (ml <= 0) return 0;
   return (tl > ml) ? (tl - ml) : 0; 
 }
-// ENSURE SCROLL IS WITHIN BOUNDS OF VISIBLE TEXT !!
-inline void clampScroll(Frame& frame) {
-  long maxStart = maxScroll(frame);
-  if (frame.scroll < 0)       frame.scroll = 0;
-  if (frame.scroll > maxStart) frame.scroll = maxStart;
-}
-// REMOVE CARRAIGE RETURN AND LINE FEED !!
+
 inline size_t trimCRLF(const char* s, size_t n) {
   while (n && (s[n-1] == '\n' || s[n-1] == '\r')) --n;
   return n;
 }
-// RETURN BOTTOM INDEX OF FRAME TEXT SOURCE !!
-inline long bottomIdx(const Frame& frame) {
-  long tl = totalLines(frame);
-  return (tl > 0) ? (tl - 1 - frame.scroll) : -1;
+
+inline long bottomIdx(const Frame& f) {
+  long tl = totalLines(f);
+  return (tl > 0) ? (tl - 1 - f.scroll) : -1;
 }
-// MAKE SURE CHOICE IS VISIBLE IN FRAME --
-inline void ensureChoiceVisible(Frame& frame) {
-  long T = frame.source ? (long)frame.source->size() : 0L;
-  int  D = max(1, frame.maxLines);
-  if (T == 0 || frame.choice < 0 || frame.choice >= T) return;
+
+inline void ensureChoiceVisible(Frame& f) {
+  long T = f.source ? (long)f.source->size() : 0L;
+  int  D = max(1, f.maxLines);
+  if (T == 0 || f.choice < 0 || f.choice >= T) return;
 
   // choose a start index so that choice is within [start, start + D)
-  long start = frame.choice - (D - 1); 
-  if (start < 0) start = 0;
+  long startWanted = f.choice - (D - 1); 
+  if (startWanted < 0) startWanted = 0;
   long maxStart = (T > D) ? (T - D) : 0;
-  if (start > maxStart) start = maxStart;
-  frame.scroll = T - D - start;
+  if (startWanted > maxStart) startWanted = maxStart;
+  f.scroll = T - D - startWanted;
 }
-// REST SCROLL OF FRAME !!
-inline void resetScroll(Frame& frame) {
-  long tl = (long)(frame.source ? frame.source->size() : 0);
-  long ml = (long)frame.maxLines;
-  frame.scroll = tl > ml ? (tl - ml) : 0;
-  frame.prevScroll = -1;
+
+inline int bytesPerRow1bpp(int w) { return (w + 7) >> 3; }
+
+inline void resetScroll(Frame& f) {
+  long tl = (long)(f.source ? f.source->size() : 0);
+  long ml = (long)f.maxLines;
+  f.scroll = tl > ml ? (tl - ml) : 0;
+  f.prevScroll = -1;
 }
-// GET CLEANED STRING FROM FRAME CHOICE -- NOTE: remove ~C~ and ~R~ in refactor to lineview flages
+
+
+// GET CLEANED STRING FROM FRAME CHOICE
 String frameChoiceString(const Frame& f) {
   LineView lv = f.source->line(f.choice);
   String s(lv.ptr, lv.len);
@@ -131,7 +141,7 @@ String frameChoiceString(const Frame& f) {
   s.trim();
   return s;   
 }
-// COPY TEXTSOURCE TO STD::VECTOER<STRING> MEMORY INEFFICIENT REMOVE IF STD::VECTOR<STRING> LINES ARE DEPRECIATED
+// COPY TEXTSOURCE TO STD::VECTOER<STRING> MEMORY INEFFICIENT
 std::vector<String> sourceToVector(const TextSource* src) {
   std::vector<String> result;
   if (!src) return result;
@@ -146,29 +156,29 @@ std::vector<String> sourceToVector(const TextSource* src) {
 }
 
 ///////////////////////////// DRAWING FUNCTIONS
-// DRAW ALL FRAMES STORED WITHIN TOTAL FRAME BOUNDING BOX -- NOTE: remove ~C~ and ~R~ with switch to lineview flags
+// DRAW ALL FRAMES STORED WITHIN TOTAL FRAME BOUNDING BOX
 void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh) {
   if (frames.empty()) return;
 
   // compute union window
   int minX =  32767, minY =  32767;
   int maxX = -32768, maxY = -32768;
-  for (Frame* frame : frames) {
-    if (!frame) continue;
-    const int width = display.width()  - frame->left  - frame->right;
-    const int height = display.height() - frame->top   - frame->bottom;
-    if (width <= 0 || height <= 0) continue;
-    if (frame->left < minX) minX = frame->left;
-    if (frame->top  < minY) minY = frame->top;
-    if (frame->left + width > maxX) maxX = frame->left + width;
-    if (frame->top  + height > maxY) maxY = frame->top  + height;
+  for (Frame* f : frames) {
+    if (!f) continue;
+    const int w = display.width()  - f->left  - f->right;
+    const int h = display.height() - f->top   - f->bottom;
+    if (w <= 0 || h <= 0) continue;
+    if (f->left < minX) minX = f->left;
+    if (f->top  < minY) minY = f->top;
+    if (f->left + w > maxX) maxX = f->left + w;
+    if (f->top  + h > maxY) maxY = f->top  + h;
   }
   if (minX > maxX || minY > maxY) return;
 
   const int winX = minX;
   const int winY = alignDown8(minY);
   const int winW = alignUp8(maxX - minX);
-  const int winH = alignDown8(maxY - winY);
+  const int winH = alignUp8(maxY - winY);
 
   setTXTFont(currentFont);
 
@@ -291,7 +301,8 @@ void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRef
     //Serial.println("Done drawing frames!");
   (void)noRefresh;
 }
-// DRAW BOX AROUND FRAME !!
+
+// DRAW BOX AROUND FRAME
 void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight,bool invert) {
   // draw box around frame within the partial window
   if (invert){
@@ -307,7 +318,7 @@ void drawFrameBox(int usableX, int usableY, int usableWidth, int usableHeight,bo
     display.drawFastVLine(usableX + usableWidth - 1, usableY, usableHeight, GxEPD_BLACK); // Right
   }
 }
-// DRAW SINGLE LINE IN FRAME -- NOTE: remove ~C~ and ~R~ with switch to lineview flags
+// DRAW SINGLE LINE IN FRAME
 void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial) {
     if (srcLine.length() == 0) return;
     // get alignment and remove alignment marker
@@ -322,7 +333,7 @@ void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, 
     // set yRaw to frame top + spaces taken by all previous lines
     int yRaw = frame.top + lineIndex * (fontHeight + lineSpacing);
     // set the cursor y so that the top of the font does not get cut off by the top of the frame
-    int yDraw = yRaw + fontHeight - y1/2; 
+    int yDraw = yRaw + fontHeight - y1; 
     // if clear line, clear box the size of the frame at the current line
     if (clearLine) {
         int yClear = alignDown8(yRaw);
@@ -338,7 +349,6 @@ void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, 
 }
 
 ///////////////////////////// FRAME SCROLL FUNCTIONS
-// NOTE: frameSelection must be set to 0 after updating choices in corresponding app to continue with choice selection
 void updateScrollFromTouch_Frame() {
   uint16_t touched = cap.touched();
   int newTouch = -1;
@@ -393,6 +403,9 @@ void updateScrollFromTouch_Frame() {
         }
     }
   }
+
+  Serial.println("update scroll has finished!");
+  delay(100);
 }
 
 // UPDATE CURRENT FRAME SCROLL
@@ -489,7 +502,7 @@ void oledScrollFrame() {
 }
 
 ///////////////////////////// TEXT POSITION FUNCTIONS
-// FIND START AND END LINES OF FRAME !!
+// FIND START AND END LINES OF FRAME
 void getVisibleRange(Frame *f, long totalLines, long &startLine, long &endLine) {
     if (totalLines <= 0) {
         startLine = endLine = 0;
@@ -501,7 +514,7 @@ void getVisibleRange(Frame *f, long totalLines, long &startLine, long &endLine) 
     startLine = max(0L, totalLines - displayLines - scrollOffset);
     endLine   = min(totalLines, startLine + displayLines);
 }
-// COMPUTE X POS IN FRAME !!
+// COMPUTE X POS IN FRAME
 int computeCursorX(Frame &frame, bool rightAlign, bool centerAlign, int16_t x1, uint16_t lineWidth) {
     const int padding = 16;
     int usableWidth = display.width() - frame.left - frame.right;

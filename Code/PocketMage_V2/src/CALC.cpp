@@ -340,7 +340,7 @@ const size_t CONV_DATA_COUNT = sizeof(CONV_DATA_LINES)/sizeof(CONV_DATA_LINES[0]
 #pragma endregion
 #pragma region convAngle
 const char caa0[] PROGMEM = "~C~rad\n";
-const char caa1[] PROGMEM = "~C~deg\n";
+const char caa1[] PROGMEM = "~C~°\n";
 const char caa2[] PROGMEM = "~C~gon\n";
 const char caa3[] PROGMEM = "~C~arcmin\n";
 const char caa4[] PROGMEM = "~C~arcsec\n";
@@ -563,6 +563,12 @@ void CALC_INIT() {
   frames.clear();
   frames.push_back(&calcScreen);
 
+  frames.push_back(&testBitmapScreen1);
+  frames.push_back(&testBitmapScreen);
+  frames.push_back(&testTextScreen);
+  frames.push_back(&testBitmapScreen2);
+  testTextScreen.scroll = helpSrc.size() - 11;
+  CurrentFrameState = &testTextScreen;
   // not clean, relying on magic number 11 since the frame hasn't been drawn with EinkFrameDynamic
   helpScreen.scroll = helpSrc.size() - 11;
   conversionFrameA.extendedBottom = FRAME_BOTTOM + 8;
@@ -576,7 +582,11 @@ void CALC_INIT() {
   conversionFrameB.choice = 0;
   conversionUnit.choice = 0;
   currentFrameChoice = conversionUnit.choice;
-
+  testBitmapScreen1.invert = 1;
+  testBitmapScreen.overlap = 1;
+  testBitmapScreen2.overlap = 1;
+  testTextScreen.overlap = 1;
+  testTextScreen.choice = 3;
   dynamicScroll = 0;
   prev_dynamicScroll = -1;
   lastTouch = -1;
@@ -601,11 +611,15 @@ void processKB_CALC() {
     // update scroll (calc specific function,could be abstracted to processSB_CALC())
     updateScrollFromTouch_Frame();
     if (frameSelection){
-      if (CurrentFrameState == &conversionUnit) {
-        selectUnitType(conversionUnit.choice);
-      } else {
-        String sym = frameChoiceString(*CurrentFrameState);
-        CurrentFrameState->unit = (Unit*)getUnit(sym);
+      if (CurrentFrameState->choice != -1){
+        if (CurrentFrameState == &conversionUnit) {
+          Serial.println("changed conversionUnit type!");
+          selectUnitType(conversionUnit.choice);
+        } else {
+          String sym = frameChoiceString(*CurrentFrameState);
+          Serial.println("Setting Unit to " + sym);
+          CurrentFrameState->unit = (Unit*)getUnit(sym);
+        }
       }
       frameSelection = 0;
     }
@@ -638,7 +652,7 @@ void processKB_CALC() {
         else if (inchar == 9 || inchar == 14) {    
           conversionDirection.choice == 1 ? conversionDirection.choice = 0 :conversionDirection.choice= 1;
           newLineAdded = true;
-          //Serial.println("adjusting convDir to : " + String(conversionDirection.choice));
+          Serial.println("adjusting convDir to : " + String(conversionDirection.choice));
         }                                      
         // SHIFT Recieved
         else if (inchar == 17) {                                  
@@ -662,7 +676,7 @@ void processKB_CALC() {
         }
         // CR Recieved
         else if (inchar == 13) {    
-          //Serial.println(" current direction is " + String(conversionDirection.choice));
+          Serial.println(" current direction is " + String(conversionDirection.choice));
           calcCRInput(); // existing behavior                      
         }
         // ESC / CLEAR Recieved
@@ -970,7 +984,6 @@ void processKB_CALC() {
   }
 }
 // Eink handler
-// NOTE: duplicated code for some calc modes in handler
 void einkHandler_CALC() {
   if (newLineAdded || newState) {
     // reset eink screen if returning from a new mode
@@ -978,7 +991,7 @@ void einkHandler_CALC() {
       calcSwitchedStates = 0;
       doFull = 1;
       frames.clear();
-      if (CurrentCALCState == CALC2)  {   
+      if (CurrentCALCState != CALC3 && CurrentCALCState != CALC4)  {   
         // to-do: convert to helper function to reset all frame tabs
         conversionFrameA.bottom = conversionFrameA.originalBottom;
         conversionFrameB.bottom = conversionFrameB.originalBottom;
@@ -989,14 +1002,13 @@ void einkHandler_CALC() {
         doFull = 1;
         frames.clear();
         if (CurrentCALCState == CALC1){
-          frames.push_back(&programmingScreen);
-          frames.push_back(&numberSizeFrame);
-          frames.push_back(&hexadecimalFrame);
-          frames.push_back(&decimalFrame);
-          decimalFrame.invert = 1;
-          frames.push_back(&octalFrame);
-          frames.push_back(&binaryFrame);
-          CurrentFrameState = &programmingScreen; // placeholder
+          //frames.push_back(&programmingScreen);
+          //frames.push_back(&numberSizeFrame);
+          //frames.push_back(&hexadecimalFrame);
+          //frames.push_back(&decimalFrame);
+          //frames.push_back(&octalFrame);
+          //frames.push_back(&binaryFrame);
+          CurrentFrameState = &calcScreen; // placeholder
           CurrentFrameState->scroll = 0;
           CurrentFrameState->prevScroll = -1;
         } else if (CurrentCALCState == CALC3){
@@ -1008,9 +1020,9 @@ void einkHandler_CALC() {
           CurrentFrameState = &conversionScreen;
           CurrentFrameState->scroll = 0;
           CurrentFrameState->prevScroll = -1;
-        }else {  // CALC0 and CALC4
+        }else {
           frames.clear();
- 
+
           currentFont = &FreeMonoBold9pt7b;
           setTXTFont(currentFont);
           frames.push_back(&helpScreen);
@@ -1023,6 +1035,7 @@ void einkHandler_CALC() {
       drawCalc();
       newLineAdded = true;
       einkTextFramesDynamic(frames,true,false);
+      
     } else {
       switch (CurrentCALCState) {
         case CALC0:
@@ -1049,25 +1062,6 @@ void einkHandler_CALC() {
           break;
         case CALC1:
           //programming mode
-          if (newState && doFull) { 
-            drawCalc();
-            einkTextFramesDynamic(frames,true,false);
-            //refresh();
-            doFull = false;
-          } else if (newLineAdded && !newState) {
-            refresh_count++;
-            if (refresh_count > REFRESH_MAX_CALC){
-              drawCalc(); 
-              setFastFullRefresh(false);
-              einkTextFramesDynamic(frames,true,false);
-              refresh_count = 0;
-            } else {
-              einkTextFramesDynamic(frames,true,false);
-            }
-            setFastFullRefresh(true);
-          } else if (newState && !newLineAdded) {
-            drawCalc();
-          }
           break;
         case CALC2:
           //scientific mode
@@ -1373,7 +1367,7 @@ std::vector<String> tokenize(const String& expression) {
           usedRepeatFunction = true;
           // Add in previous expression tokens
           for (auto it = prevTokens.begin(); it != prevTokens.end(); ++it) {
-              //Serial.println("pushing token: " + *it + " from previous expression");
+              Serial.println("pushing token: " + *it + " from previous expression");
               tokens.push_back(*it);
           }
 
@@ -1847,6 +1841,7 @@ String evaluateRPN(std::deque<String> rpnQueue, const Unit *convA, const Unit *c
 ///////////////////////////// INPUT/OUTPUT FUNCTIONS
 // ENTER (CR) INPUT
 void calcCRInput(){
+
   // trim spaces
   currentLine.replace(" ", ""); 
   // parse commands
@@ -1858,7 +1853,8 @@ void calcCRInput(){
     }  
     else if (currentLine == "/1"){
         // programming mode
-        CurrentCALCState = CALC1;
+        CurrentCALCState = CALC0;
+        oledWord("Programming Mode not implemented"); 
         calcSwitchedStates = 1;
         delay(1000);
     }
@@ -1876,7 +1872,7 @@ void calcCRInput(){
     else if (currentLine == "/4"){
         // help mode
         CurrentCALCState = CALC4;
-        //Serial.println("helpScreen scroll = " + String(helpScreen.scroll));
+        Serial.println("helpScreen scroll = " + String(helpScreen.scroll));
         calcSwitchedStates = true;
 
     }
