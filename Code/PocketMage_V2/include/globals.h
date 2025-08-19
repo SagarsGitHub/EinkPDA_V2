@@ -163,10 +163,14 @@ extern unsigned long lastTouchTime;
 #define SCROLL_MAX 8
 #define SCROLL_MED 4
 #define SCROLL_SML 2
-#define FRAME_TOP 32                                  // top for large calc frame
-#define FRAME_LEFT 10                                 // left for large calc frame
-#define FRAME_RIGHT 10                                // right for large calc frame
-#define FRAME_BOTTOM 32                               // bottom for large calc frame
+#define FRAME_TOP 32                                  // top margin for large calc frame
+#define FRAME_TOP_FOR_BOTTOM_TAB FRAME_TOP + 88       // top margin for 1/2 tab pinned to bottom
+#define FRAME_LEFT 10                                 // left margin for large calc frame
+#define FRAME_LEFT_FOR_RIGHT_TAB FRAME_LEFT + 152     // left margin for 1/2 tab pinned to right
+#define FRAME_RIGHT 10                                // right margin for large calc frame
+#define FRAME_RIGHT_FOR_LEFT_TAB FRAME_RIGHT + 152    // right margin for 1/2 tab pinned to left
+#define FRAME_BOTTOM 32                               // bottom margin for large calc frame
+#define FRAME_BOTTOM_FOR_TOP_TAB FRAME_BOTTOM + 88       // bottom margin for 1/2 tab pinned to top
 enum CALCState { CALC0, CALC1, CALC2, CALC3, CALC4, CALCFONT };
 struct Unit {
     const char* name;  
@@ -188,7 +192,7 @@ extern String cleanExpression;
 extern String calculatedResult;
 extern int calcSwitchedStates;
 extern String prevLine;
-extern std::map<String, float> variables;
+extern std::map<String, double> variables;
 extern const char* operatorsCalc[];
 extern const size_t operatorsCalcCount;
 struct OpEntry { const char* token; uint8_t prec; bool rightAssoc; };
@@ -230,13 +234,13 @@ enum LineFlags : uint8_t { LF_NONE=0, LF_RIGHT= 1<<0, LF_CENTER= 1<<1 };
 struct LineView {
   const char* ptr;   // points to NUL-terminated string in RAM or PROGMEM
   uint16_t    len;   // byte length (no need to include '\0')
-  uint8_t     flags; // LineFlags
+  uint8_t     flags; // LineFlags // To-Do switch from ~C~ and ~R~ to flags
 };
 // read-only interface for any line list (PROGMEM table, arena, etc.)
 struct TextSource {
   virtual ~TextSource() {}
   virtual size_t   size() const = 0;
-  virtual LineView line(size_t i) const = 0; // never allocates
+  virtual LineView line(size_t i) const = 0;
 };
 template<size_t MAX_LINES, size_t BUF_BYTES>
 struct FixedArenaSource : TextSource {
@@ -255,7 +259,7 @@ struct FixedArenaSource : TextSource {
 
   void clear() { nLines = 0; used = 0; }
 
-  // Returns false if out of capacity; caller can choose to drop the oldest, etc.
+  // Returns false if out of capacity
   bool pushLine(const char* s, uint16_t L, uint8_t flags = LF_NONE) {
     if (nLines >= MAX_LINES || used + L + 1 > BUF_BYTES) return false;
     memcpy(buf + used, s, L);
@@ -419,9 +423,13 @@ extern Frame conversionDirection;
 extern Frame conversionFrameA;
 extern Frame conversionFrameB;
 extern Frame conversionTypes;
+extern Frame programmingScreen;
+extern Frame numberSizeFrame;
+extern Frame binaryFrame;
+extern Frame decimalFrame;
+extern Frame hexadecimalFrame;
+extern Frame octalFrame;
 extern Frame testBitmapScreen;
-extern Frame testBitmapScreen1;
-extern Frame testBitmapScreen2;
 extern Frame testTextScreen;
 extern Frame *CurrentFrameState;
 extern int currentFrameChoice;
