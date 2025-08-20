@@ -7,7 +7,6 @@
 
 #include "globals.h"
 
-#pragma region comments
 // !! Commented for code-review
 // to-do 
 // replace all frame bools with 8 bit flag 1<<0 = cursor, 1<<1 = box, 1<<2 = overlap, 1<<3 = invert, 1<<4 = choice?
@@ -48,7 +47,8 @@ Frames Class:
 
     std::vector<String> sourceToVector(const TextSource* src); // export frame text source to std::vector<String> for compatibility 
 */
-#pragma endregion
+
+#pragma region helpers
 ///////////////////////////// HELPER FUNCTIONS
 // align numbers to be divisible by 8, useful for partial windows (y & h must be divisible by 8 with GxEPD2 with rotation == 3)
 int alignDown8(int v) { return v - (v % 8); }
@@ -155,6 +155,7 @@ std::vector<String> sourceToVector(const TextSource* src) {
   }
   return result;
 }
+#pragma endregion
 
 ///////////////////////////// DRAWING FUNCTIONS
 // DRAW ALL FRAMES STORED WITHIN TOTAL FRAME BOUNDING BOX -- NOTE: remove ~C~ and ~R~ with switch to lineview flags
@@ -405,7 +406,6 @@ void updateScrollFromTouch_Frame() {
     }
   }
 }
-
 // UPDATE CURRENT FRAME SCROLL
 void updateScroll(Frame *currentFrameState,int prevScroll,int currentScroll, bool reset){
   int scroll, prev;
