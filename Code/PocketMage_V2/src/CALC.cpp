@@ -22,7 +22,8 @@
 // programming mode
 // implement matrix multiplication
 // implement for loops and conditionals
-// strategy design pattern implementation?
+// strategy design pattern implementation for evaluateRPM?
+//  - could save lines with repeated evalStack.top() evalStack.pop();
 #pragma region setupData
 #pragma region helpText
 
@@ -415,7 +416,7 @@ const size_t CONV_FREQUENCY_COUNT = sizeof(CONV_FREQUENCY_LINES) / sizeof(CONV_F
 
 #pragma endregion
 #pragma endregion
-
+#pragma region helpers
 ///////////////////////////// HELPER FUNCTIONS
 // CONFRIM TOKEN IS A NUMBER
 inline bool isNumberToken(const String& token) {
@@ -512,7 +513,6 @@ inline double convert(double value,const Unit* from,const Unit* to) {
     double inBase = (value + from->offset) * from->factor;
     return (inBase / to->factor) - to->offset;
 }
-
 // ADD LINE TO CALCLINES
 inline void calcAppend(const String& s, bool right, bool center) {
   uint8_t f = right ? LF_RIGHT : center ? LF_CENTER : LF_NONE;
@@ -523,10 +523,10 @@ const Unit* getUnit(const String& sym) {
   const UnitSet* s = CurrentUnitSet;
   for (size_t i = 0; i < s->size; ++i) {
     // compare case-insensitively to handle "m^2" vs "M^2"
-    Serial.println("Searching set index " + String(i));
-    Serial.println("syn =  " + sym + "  s->data[i].symbol = " + String(s->data[i].symbol));
+    //Serial.println("Searching set index " + String(i));
+    //Serial.println("syn =  " + sym + "  s->data[i].symbol = " + String(s->data[i].symbol));
     if (sym.equalsIgnoreCase(s->data[i].symbol)) {
-      Serial.println("Found match! " + String(i));
+      //Serial.println("Found match! " + String(i));
       return &s->data[i];
     }
   }
@@ -552,41 +552,32 @@ void selectUnitType(int idx) {
   conversionFrameA.prevScroll = conversionFrameB.prevScroll = -1;
   conversionFrameA.choice = conversionFrameB.choice = 0;
 }
-
+#pragma endregion
 ///////////////////////////// MAIN FUNCTIONS
 // CALC INITIALIZETION
 void CALC_INIT() {
   // open calc
   CurrentAppState = CALC;
   CurrentKBState = FUNC;
+  CurrentCALCState = CALC0;
   CurrentFrameState = &calcScreen;
   frames.clear();
   frames.push_back(&calcScreen);
 
-  frames.push_back(&testBitmapScreen1);
-  frames.push_back(&testBitmapScreen);
-  frames.push_back(&testTextScreen);
-  frames.push_back(&testBitmapScreen2);
-  testTextScreen.scroll = helpSrc.size() - 11;
-  CurrentFrameState = &testTextScreen;
   // not clean, relying on magic number 11 since the frame hasn't been drawn with EinkFrameDynamic
   helpScreen.scroll = helpSrc.size() - 11;
-  conversionFrameA.extendedBottom = FRAME_BOTTOM + 8;
+  conversionFrameA.extendBottom = FRAME_BOTTOM + 8;
   conversionFrameA.overlap = 1;
-  conversionFrameB.extendedBottom = FRAME_BOTTOM + 8;
+  conversionFrameB.extendBottom = FRAME_BOTTOM + 8;
   conversionFrameB.overlap = 1;
-  conversionUnit.extendedBottom = FRAME_BOTTOM + 40;
+  conversionUnit.extendBottom = FRAME_BOTTOM + 40;
   conversionUnit.overlap = 1;
   conversionDirection.choice = 0;
   conversionFrameA.choice = 0;
   conversionFrameB.choice = 0;
   conversionUnit.choice = 0;
   currentFrameChoice = conversionUnit.choice;
-  testBitmapScreen1.invert = 1;
-  testBitmapScreen.overlap = 1;
-  testBitmapScreen2.overlap = 1;
-  testTextScreen.overlap = 1;
-  testTextScreen.choice = 3;
+
   dynamicScroll = 0;
   prev_dynamicScroll = -1;
   lastTouch = -1;
@@ -613,11 +604,11 @@ void processKB_CALC() {
     if (frameSelection){
       if (CurrentFrameState->choice != -1){
         if (CurrentFrameState == &conversionUnit) {
-          Serial.println("changed conversionUnit type!");
+          //Serial.println("changed conversionUnit type!");
           selectUnitType(conversionUnit.choice);
         } else {
           String sym = frameChoiceString(*CurrentFrameState);
-          Serial.println("Setting Unit to " + sym);
+          //Serial.println("Setting Unit to " + sym);
           CurrentFrameState->unit = (Unit*)getUnit(sym);
         }
       }
@@ -652,7 +643,7 @@ void processKB_CALC() {
         else if (inchar == 9 || inchar == 14) {    
           conversionDirection.choice == 1 ? conversionDirection.choice = 0 :conversionDirection.choice= 1;
           newLineAdded = true;
-          Serial.println("adjusting convDir to : " + String(conversionDirection.choice));
+          //("adjusting convDir to : " + String(conversionDirection.choice));
         }                                      
         // SHIFT Recieved
         else if (inchar == 17) {                                  
@@ -667,7 +658,7 @@ void processKB_CALC() {
         // Space Recieved
         else if (inchar == 32) {                                  
           if (CurrentFrameState != &conversionScreen){
-            CurrentFrameState->bottom = CurrentFrameState->originalBottom;
+            CurrentFrameState->bottom = CurrentFrameState->origBottom;
             CurrentFrameState = &conversionScreen;
             dynamicScroll = CurrentFrameState->scroll;
             prev_dynamicScroll = CurrentFrameState->prevScroll;
@@ -676,7 +667,7 @@ void processKB_CALC() {
         }
         // CR Recieved
         else if (inchar == 13) {    
-          Serial.println(" current direction is " + String(conversionDirection.choice));
+          //Serial.println(" current direction is " + String(conversionDirection.choice));
           calcCRInput(); // existing behavior                      
         }
         // ESC / CLEAR Recieved
@@ -687,7 +678,7 @@ void processKB_CALC() {
             oledWord("Clearing...");
             drawCalc();
             //Serial.println("In CALC3 Mode calling frames");
-            einkTextFramesDynamic(frames,false,false);
+            einkFramesDynamic(frames,false);
             display.refresh();
             delay(300);
           }
@@ -695,12 +686,12 @@ void processKB_CALC() {
         // LEFT (scroll up)
         else if (inchar == 19 || inchar == 5) {
           if (CurrentFrameState != &conversionFrameA){
-            CurrentFrameState->bottom = CurrentFrameState->originalBottom;
+            CurrentFrameState->bottom = CurrentFrameState->origBottom;
             CurrentFrameState = &conversionFrameA;
             dynamicScroll = CurrentFrameState->scroll;
             prev_dynamicScroll = CurrentFrameState->prevScroll;
 
-            CurrentFrameState->bottom = CurrentFrameState->extendedBottom;
+            CurrentFrameState->bottom = CurrentFrameState->extendBottom;
 
             newLineAdded = true;
           }           
@@ -708,12 +699,12 @@ void processKB_CALC() {
         // RIGHT (switch to conversion a tab or scroll down in tab)
         else if (inchar == 21 || inchar == 6) { 
           if (CurrentFrameState != &conversionFrameB){
-            CurrentFrameState->bottom = CurrentFrameState->originalBottom;
+            CurrentFrameState->bottom = CurrentFrameState->origBottom;
             CurrentFrameState = &conversionFrameB;
             dynamicScroll = CurrentFrameState->scroll;
             prev_dynamicScroll = CurrentFrameState->prevScroll;
 
-            CurrentFrameState->bottom = CurrentFrameState->extendedBottom;
+            CurrentFrameState->bottom = CurrentFrameState->extendBottom;
             newLineAdded = true;
           } 
         }
@@ -730,9 +721,9 @@ void processKB_CALC() {
         //FILE Recieved (switch to unit types tab)
         else if (inchar == 7) {
           if (CurrentFrameState != &conversionUnit){
-            CurrentFrameState->bottom = CurrentFrameState->originalBottom;
+            CurrentFrameState->bottom = CurrentFrameState->origBottom;
             CurrentFrameState = &conversionUnit;
-            CurrentFrameState->bottom = CurrentFrameState->extendedBottom;
+            CurrentFrameState->bottom = CurrentFrameState->extendBottom;
             dynamicScroll = CurrentFrameState->scroll;
             prev_dynamicScroll = CurrentFrameState->prevScroll;
             newLineAdded = true;
@@ -828,7 +819,7 @@ void processKB_CALC() {
           currentLine = "";
           oledWord("Clearing...");
           drawCalc();
-          einkTextFramesDynamic(frames,false,false);
+          einkFramesDynamic(frames,false);
           display.refresh();
           delay(300);
         }
@@ -877,7 +868,7 @@ void processKB_CALC() {
           currentLine = "";
           oledWord("Clearing...");
           drawCalc();
-          einkTextFramesDynamic(frames,false,false);
+          einkFramesDynamic(frames,false);
           delay(300);
         }
         // Font Switcher (regular tab also starts the font switcher)
@@ -919,7 +910,7 @@ void processKB_CALC() {
           editingFile = "";
           currentLine = "";
           drawCalc();
-          einkTextFramesDynamic(frames,true,false);
+          einkFramesDynamic(frames,true);
         }
         else if (inchar >= '0' && inchar <= '9') {
           int fontIndex = (inchar == '0') ? 10 : (inchar - '0');
@@ -968,7 +959,7 @@ void processKB_CALC() {
 
           refresh();
           drawCalc();
-          einkTextFramesDynamic(frames,true,false);
+          einkFramesDynamic(frames,true);
 
         }
         currentMillis = millis();
@@ -993,9 +984,9 @@ void einkHandler_CALC() {
       frames.clear();
       if (CurrentCALCState != CALC3 && CurrentCALCState != CALC4)  {   
         // to-do: convert to helper function to reset all frame tabs
-        conversionFrameA.bottom = conversionFrameA.originalBottom;
-        conversionFrameB.bottom = conversionFrameB.originalBottom;
-        conversionUnit.bottom = conversionUnit.originalBottom;
+        conversionFrameA.bottom = conversionFrameA.origBottom;
+        conversionFrameB.bottom = conversionFrameB.origBottom;
+        conversionUnit.bottom = conversionUnit.origBottom;
         frames.push_back(&calcScreen);
         CurrentFrameState = &calcScreen;
       } else {
@@ -1021,7 +1012,6 @@ void einkHandler_CALC() {
           CurrentFrameState->scroll = 0;
           CurrentFrameState->prevScroll = -1;
         }else {
-          frames.clear();
 
           currentFont = &FreeMonoBold9pt7b;
           setTXTFont(currentFont);
@@ -1034,7 +1024,7 @@ void einkHandler_CALC() {
       }
       drawCalc();
       newLineAdded = true;
-      einkTextFramesDynamic(frames,true,false);
+      einkFramesDynamic(frames,true);
       
     } else {
       switch (CurrentCALCState) {
@@ -1042,7 +1032,7 @@ void einkHandler_CALC() {
           //standard mode
           if (newState && doFull) { 
             drawCalc();
-            einkTextFramesDynamic(frames,false,false);
+            einkFramesDynamic(frames,false);
             //refresh();
             doFull = false;
           } else if (newLineAdded && !newState) {
@@ -1050,10 +1040,10 @@ void einkHandler_CALC() {
             if (refresh_count > REFRESH_MAX_CALC){
               drawCalc(); 
               setFastFullRefresh(false);
-              einkTextFramesDynamic(frames,true,false);
+              einkFramesDynamic(frames,true);
               refresh_count = 0;
             } else {
-              einkTextFramesDynamic(frames,true,false);
+              einkFramesDynamic(frames,true);
             }
             setFastFullRefresh(true);
           } else if (newState && !newLineAdded) {
@@ -1067,7 +1057,7 @@ void einkHandler_CALC() {
           //scientific mode
           if (newState && doFull) { 
             drawCalc();
-            einkTextFramesDynamic(frames,true,false);
+            einkFramesDynamic(frames,true);
             //refresh();
             doFull = false;
           } else if (newLineAdded && !newState) {
@@ -1075,10 +1065,10 @@ void einkHandler_CALC() {
             if (refresh_count > REFRESH_MAX_CALC){
               drawCalc(); 
               setFastFullRefresh(false);
-              einkTextFramesDynamic(frames,true,false);
+              einkFramesDynamic(frames,true);
               refresh_count = 0;
             } else {
-              einkTextFramesDynamic(frames,true,false);
+              einkFramesDynamic(frames,true);
             }
             setFastFullRefresh(true);
           } else if (newState && !newLineAdded) {
@@ -1090,7 +1080,7 @@ void einkHandler_CALC() {
           if (newState && doFull) { 
             drawCalc();
             //Serial.println("In CALC3 Mode calling frames");
-            einkTextFramesDynamic(frames,true,false);
+            einkFramesDynamic(frames,true);
             //refresh();
             doFull = false;
           } else if (newLineAdded && !newState) {
@@ -1099,11 +1089,11 @@ void einkHandler_CALC() {
               drawCalc(); 
               setFastFullRefresh(false);
               //Serial.println("In CALC3 Mode calling frames");
-              einkTextFramesDynamic(frames,true,false);
+              einkFramesDynamic(frames,true);
               refresh_count = 0;
             } else {
               //Serial.println("In CALC3 Mode calling frames");
-              einkTextFramesDynamic(frames,true,false);
+              einkFramesDynamic(frames,true);
             }
             setFastFullRefresh(true);
           } else if (newState && !newLineAdded) {
@@ -1114,7 +1104,7 @@ void einkHandler_CALC() {
           // help mode
           if (newState && doFull) { 
             drawCalc();
-            einkTextFramesDynamic(frames,true,false);
+            einkFramesDynamic(frames,true);
             //refresh();
             doFull = false;
           } else if (newLineAdded && !newState) {
@@ -1122,10 +1112,10 @@ void einkHandler_CALC() {
             if (refresh_count > REFRESH_MAX_CALC){
               drawCalc(); 
               setFastFullRefresh(false);
-              einkTextFramesDynamic(frames,true,false);
+              einkFramesDynamic(frames,true);
               refresh_count = 0;
             } else {
-              einkTextFramesDynamic(frames,true,false);
+              einkFramesDynamic(frames,true);
             }
             setFastFullRefresh(true);
           } else if (newState && !newLineAdded) {
@@ -1829,7 +1819,7 @@ String evaluateRPN(std::deque<String> rpnQueue, const Unit *convA, const Unit *c
     }
     //Serial.println("exited evaluation RPN function");
     variables["ans"] = evalStack.top();
-
+    // NOTE: for bit conversion, clamp input to int
     if ((convA != nullptr) && strcmp(convA->name, convB->name) != 0){
       //Serial.println("converting input!");
       cleanExpression = cleanExpression + convA->symbol;
@@ -1917,8 +1907,8 @@ void calcCRInput(){
       currentLine == "!!" ? prevLine : currentLine;
       //Serial.println("PrevLine updated to : " + currentLine);
       if (CurrentCALCState == CALC3){
-        conversionFrameA.bottom = conversionFrameA.originalBottom;
-        conversionFrameB.bottom = conversionFrameA.originalBottom;
+        conversionFrameA.bottom = conversionFrameA.origBottom;
+        conversionFrameB.bottom = conversionFrameA.origBottom;
         CurrentFrameState = &conversionScreen;
         String conversionA = frameChoiceString(conversionFrameA);
         String conversionB = frameChoiceString(conversionFrameB);
@@ -1927,7 +1917,7 @@ void calcCRInput(){
         const Unit* convB = getUnit(conversionB);
 
         conversionDirection.choice == 0 ? printAnswer(currentLine,convA,convB):printAnswer(currentLine,convB,convA);
-        
+
 
         
       } else {

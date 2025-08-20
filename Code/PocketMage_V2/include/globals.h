@@ -360,13 +360,15 @@ public:
 
   // geometry
   int left, right, top, bottom;
-  int extendedBottom, originalBottom;
+  int origLeft, origRight, origTop, origBottom;
+  int extendLeft, extendRight, extendTop, extendBottom;
 
   // flags/state switch to uint8_t flag
   bool cursor   = false;
   bool box      = false;
   bool invert   = false;
   bool overlap  = false;
+
 
   int   choice     = -1;
   long  scroll     = 0;
@@ -383,10 +385,10 @@ public:
   
   const Unit *unit = nullptr;
   // base constructor for common fields
-  Frame(int left, int right, int top, int bottom, bool cursor=false, bool box=false)
+  Frame(int left, int right, int top, int bottom, 
+        bool cursor=false, bool box=false)
   : left(left), right(right), top(top), bottom(bottom),
-    extendedBottom(bottom), originalBottom(bottom),
-    cursor(cursor), box(box) {}
+    extendBottom(bottom), origBottom(bottom), cursor(cursor), box(box) {}
 
   // constructor for text frames
   Frame(int left, int right, int top, int bottom,
@@ -555,7 +557,7 @@ void processKB_TASKS();
 
 // <FRAMES.cpp>
   // main functions
-void einkTextFramesDynamic(std::vector<Frame*> &frames, bool doFull_, bool noRefresh);
+void einkFramesDynamic(std::vector<Frame*> &frames, bool doFull_);
   // text boxes
 std::vector<String> formatText(Frame &frame,int maxTextWidth);
 void drawLineInFrame(String &srcLine, int lineIndex, Frame &frame, int usableY, bool clearLine, bool isPartial);
