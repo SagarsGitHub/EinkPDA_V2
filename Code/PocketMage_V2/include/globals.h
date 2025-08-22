@@ -188,7 +188,7 @@ extern String cleanExpression;
 extern String calculatedResult;
 extern int calcSwitchedStates;
 extern String prevLine;
-extern std::map<String, float> variables;
+extern std::map<String, double> variables;
 extern const char* operatorsCalc[];
 extern const size_t operatorsCalcCount;
 struct OpEntry { const char* token; uint8_t prec; bool rightAssoc; };
@@ -362,7 +362,8 @@ public:
   int left, right, top, bottom;
   int origLeft, origRight, origTop, origBottom;
   int extendLeft, extendRight, extendTop, extendBottom;
-
+  int bitmapW = 0;
+  int bitmapH = 0;
   // flags/state switch to uint8_t flag
   bool cursor   = false;
   bool box      = false;
@@ -380,8 +381,8 @@ public:
   Kind kind = Kind::none;
   const TextSource* source = nullptr;  // for text frames
   const uint8_t* bitmap    = nullptr;  // for bitmap frames
-  int bitmapW = 0;
-  int bitmapH = 0;
+  const GFXfont *font = (GFXfont *)&FreeSerif9pt7b;
+
   
   const Unit *unit = nullptr;
   // base constructor for common fields

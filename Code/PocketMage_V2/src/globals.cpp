@@ -167,17 +167,45 @@ const char* constantsCalc[] = {
 const size_t constantsCalcCount = sizeof(constantsCalc)/sizeof(constantsCalc[0]);
 
 const OpEntry OPS[] = {
-  {":",0,false}, {"+",1,false}, {"-",1,false},
-  {"*",2,false}, {"/",2,false}, {"%",2,false},
-  {"E",3,true }, // exponent right-associative
-  {"\"",3,false},
-  {"'",2,false}, // if you use single-quote as some operator
-  {"!",4,true }, // postfix, treat as right-assoc for shunting-yard condition
-  {"~neg~",4,true} // unary negation
+  {":",     0, false}, 
+  {"+",     1, false}, 
+  {"-",     1, false},
+  {"*",     2, false}, 
+  {"/",     2, false}, 
+  {"%",     2, false},
+  {"E",     3,  true}, // exponent
+  {"\"",    3, false}, // ^
+  {"'",     2, false}, // *
+  {"!",     4,  true}, 
+  {"~neg~", 4,  true}  // unary negation
 };
 const size_t OPS_N = sizeof(OPS)/sizeof(OPS[0]);
 
-std::map<String, float> variables = {};
+std::map<String, double> variables = {
+  {"c",          299792458}, // speed of light [m/s]
+  {"g",            9.80665}, // gravitational acceleration [m/s^2]
+  {"G",        6.67430e-11}, // gravitational constant [m^3/kg*s^2]
+  {"h",      6.2607015e-34}, // Planck's constant [J*s]
+  {"rh",   1.054571817e-34}, // reduced Planck's constant [J*s]
+  {"q",    1.602176634e-19}, // elementary charge [C]
+  {"n",      6.02214076e23}, // Avogadro's number [1/mol]
+  {"k",       1.380649e-23}, // Boltzmann constant [J/K]
+  {"r",        8.314462618}, // gas constant [mol*K]
+  {"eo",  8.8541878128e-12}, // vacuum permittivity [F/m]
+  {"uo",  12.5663706144e-7}, // vacuum permeability [H/m]
+  {"Z",            376.730}, // impedance of free space [Ohm]
+  {"alpha",  0.00729927007}, // fine-structure constant
+  {"sigma", 5.670374419e-8}, // Stefan-Boltzmann constant [W/m^2*K^4]
+  {"b",     2.897771955e-3}, // Wien's displacement constant [m*K]
+  {"me",    9.10938356e-31}, // electron mass [kg]
+  {"mp", 1.67262192369e-27}, // proton mass [kg]
+  {"nm", 1.67492749804e-27}, // neutron mass [kg]
+  {"u",  1.66053906660e-27}, // unified atomic mass unit [kg]
+  {"AU",    1.495978707e11}, // astronomical unit [kg]
+  {"ly",         9.4607e15}, // light year [m]
+  {"pc",         3.0857e16}, // parsec [m]
+  {"M",         1.98847e30}  // solar mass [kg]
+};
 
 #pragma region units
 static const Unit lengthUnits[] = {
@@ -311,7 +339,7 @@ static const Unit timeUnits[] = {
     { "Hour",        "h",   3600.0,      0.0 },
     { "Day",         "d",   86400.0,     0.0 },
     { "Week",        "wk",  604800.0,    0.0 },
-    { "Year",        "yr",  31557600.0,  0.0 } // 365.25 days
+    { "Year",        "yr",  31557600.0,  0.0 }  // 365.25 days
 };
 
 static const Unit powerUnits[] = {
@@ -416,23 +444,34 @@ String prevLine = "";
 int calcSwitchedStates = 0;
 int trigType = 1;
 int refresh_count = 0;
-int currentFrameChoice = -1;
-int frameSelection = 0;
+
+Unit emptyUnit = {"","",NAN,NAN};
+
 // <frame.cpp>
+std::vector<Frame*> frames = {};
+int currentFrameChoice = -1;
+// NOTE: if used, reset frameSelection after every updateScrollFromTouch_Frame to add choice functionality
+int frameSelection = 0;
+
 #pragma region frameSetup
 Frame calcScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP,FRAME_BOTTOM,&calcLines,false,false);
-Frame testBitmapScreen(FRAME_LEFT + 30,FRAME_RIGHT + 200,FRAME_TOP - 16,FRAME_BOTTOM + 80,homeIconsAllArray[0],40,40,false,false);
-Frame testBitmapScreen1(0,0,0,0,calendar_allArray[3],320,218,false,true);
-Frame testBitmapScreen2(FRAME_LEFT + 160,FRAME_RIGHT,FRAME_TOP,FRAME_BOTTOM + 60,homeIconsAllArray[0],40,40,false,true);
-Frame testTextScreen(FRAME_LEFT + 8,FRAME_RIGHT + 96,FRAME_TOP + 80,FRAME_BOTTOM + 8,&helpSrc,false,true);
-Frame conversionScreen(FRAME_LEFT ,FRAME_RIGHT,FRAME_TOP + 80, FRAME_BOTTOM,&calcLines,false,true);
 Frame helpScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP,FRAME_BOTTOM,&helpSrc,false,true);
+Frame conversionScreen(FRAME_LEFT ,FRAME_RIGHT,FRAME_TOP + 80, FRAME_BOTTOM,&calcLines,false,true);
 Frame conversionUnit(FRAME_LEFT ,FRAME_RIGHT,FRAME_TOP, FRAME_BOTTOM + 136,&unitTypesSrc,false,true);
 Frame conversionDirection(FRAME_LEFT + 120 ,FRAME_RIGHT + 120,FRAME_TOP + 40, FRAME_BOTTOM + 96,&convDirSrc,false,false);
 Frame conversionFrameA(FRAME_LEFT + 24,FRAME_RIGHT + 184,FRAME_TOP + 40, FRAME_BOTTOM + 96,&convLengthSrc,true,true);
 Frame conversionFrameB(FRAME_LEFT + 184,FRAME_RIGHT + 24,FRAME_TOP + 40, FRAME_BOTTOM + 96,&convLengthSrc,true,true);
-std::vector<Frame*> frames = {};
+Frame programmingScreen(FRAME_LEFT,FRAME_RIGHT + 80,FRAME_TOP + 16,FRAME_BOTTOM,&calcLines,false,true);
+Frame numberSizeFrame(FRAME_LEFT + 220,FRAME_RIGHT,FRAME_TOP+ 16,FRAME_BOTTOM,&calcLines,false,true);
+Frame binaryFrame(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP,FRAME_BOTTOM - 16,&calcLines,false,true);
+Frame decimalFrame(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP ,FRAME_BOTTOM + 48,&calcLines,false,true);
+Frame octalFrame(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 40,FRAME_BOTTOM + 16,&calcLines,false,true);
+Frame hexadecimalFrame(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 72,FRAME_BOTTOM - 16,&calcLines,false,true);
+Frame testBitmapScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP,FRAME_BOTTOM + 88,homeIconsAllArray[0],40,40,false,true);
+Frame testTextScreen(FRAME_LEFT,FRAME_RIGHT,FRAME_TOP + 88,FRAME_BOTTOM,&helpSrc,false,true);
+
 
 #pragma endregion
 
-Unit emptyUnit = {"","",NAN,NAN};
+
+
